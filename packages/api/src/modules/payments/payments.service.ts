@@ -31,13 +31,13 @@ interface AsaasPixQrCode {
   expirationDate: string;
 }
 
-interface CreatePaymentResult {
+export interface CreatePaymentResult {
   paymentId: string;
   invoiceUrl: string;
   pixQrCode?: AsaasPixQrCode;
 }
 
-interface PaymentStatusResult {
+export interface PaymentStatusResult {
   status: string;
   asaasPaymentId: string | null;
   asaasInvoiceUrl: string | null;

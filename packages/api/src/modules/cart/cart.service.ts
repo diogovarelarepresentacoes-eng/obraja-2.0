@@ -38,7 +38,7 @@ interface CartProduct {
   supplier: { companyName: string; tradeName: string | null };
 }
 
-interface CartItemWithProduct {
+export interface CartItemWithProduct {
   id: string;
   cartId: string;
   productId: string;
