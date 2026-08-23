@@ -15,7 +15,7 @@ module.exports = {
     {
       name: 'obraja-marketplace',
       cwd: './apps/web-marketplace',
-      script: 'node_modules/.bin/next',
+      script: 'node_modules/next/dist/bin/next',
       args: 'start -p 3000',
       env: { NODE_ENV: 'production' },
       max_memory_restart: '512M',
@@ -25,7 +25,7 @@ module.exports = {
     {
       name: 'obraja-supplier',
       cwd: './apps/web-supplier',
-      script: 'node_modules/.bin/next',
+      script: 'node_modules/next/dist/bin/next',
       args: 'start -p 3003',
       env: { NODE_ENV: 'production' },
       max_memory_restart: '512M',
@@ -35,7 +35,7 @@ module.exports = {
     {
       name: 'obraja-admin',
       cwd: './apps/web-admin',
-      script: 'node_modules/.bin/next',
+      script: 'node_modules/next/dist/bin/next',
       args: 'start -p 3002',
       env: { NODE_ENV: 'production' },
       max_memory_restart: '512M',
