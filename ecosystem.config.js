@@ -1,0 +1,46 @@
+module.exports = {
+  apps: [
+    {
+      name: 'obraja-api',
+      cwd: './packages/api',
+      script: 'dist/main.js',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001,
+      },
+      max_memory_restart: '512M',
+      error_file: '/var/log/obraja/api-error.log',
+      out_file: '/var/log/obraja/api-out.log',
+    },
+    {
+      name: 'obraja-marketplace',
+      cwd: './apps/web-marketplace',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 3000',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '512M',
+      error_file: '/var/log/obraja/marketplace-error.log',
+      out_file: '/var/log/obraja/marketplace-out.log',
+    },
+    {
+      name: 'obraja-supplier',
+      cwd: './apps/web-supplier',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 3003',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '512M',
+      error_file: '/var/log/obraja/supplier-error.log',
+      out_file: '/var/log/obraja/supplier-out.log',
+    },
+    {
+      name: 'obraja-admin',
+      cwd: './apps/web-admin',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 3002',
+      env: { NODE_ENV: 'production' },
+      max_memory_restart: '512M',
+      error_file: '/var/log/obraja/admin-error.log',
+      out_file: '/var/log/obraja/admin-out.log',
+    },
+  ],
+};
