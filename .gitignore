@@ -1,0 +1,43 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+.next/
+.expo/
+out/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Prisma
+packages/database/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Cache
+.turbo/
+.eslintcache
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Uploads locais (usar S3 em prod)
+uploads/
+
+# Playwright
+playwright-report/
+test-results/

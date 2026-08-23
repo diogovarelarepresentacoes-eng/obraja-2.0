@@ -1,0 +1,548 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  ADMIN
+  SUPPLIER_STORE
+  SUPPLIER_FACTORY
+  CONTRACTOR
+  BUYER
+  DRIVER
+}
+
+enum UserStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum DocumentType {
+  CONTRATO_SOCIAL
+  CNPJ
+  INSCRICAO_ESTADUAL
+  CPF
+  CNH_FRENTE
+  CNH_VERSO
+  CRLV
+  SELFIE_DOCUMENTO
+  COMPROVANTE_RESIDENCIA
+  ADITIVO_CONTRATUAL
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_CONFIRMED
+  PAYMENT_FAILED
+  CANCELLED
+}
+
+enum SubOrderStatus {
+  AWAITING_SEPARATION
+  IN_SEPARATION
+  READY_FOR_PICKUP
+  IN_TRANSIT
+  DELIVERED
+  DELIVERY_FAILED
+  RETURNED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  PIX
+  BOLETO
+  CREDIT_CARD
+  DEBIT_CARD
+  TERM_PAYMENT
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  COLLECTING
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum VehicleType {
+  MOTO
+  CARRO
+  VAN
+  CAMINHONETE
+  CAMINHAO
+}
+
+// ============================================================
+// USUÁRIOS E AUTENTICAÇÃO
+// ============================================================
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  passwordHash    String
+  phone           String?
+  role            UserRole   @default(BUYER)
+  status          UserStatus @default(APPROVED) // BUYER é aprovado imediatamente
+  isEmailVerified Boolean    @default(false)
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  supplierProfile   SupplierProfile?
+  contractorProfile ContractorProfile?
+  driverProfile     DriverProfile?
+  buyerProfile      BuyerProfile?
+  documents         Document[]
+  orders            Order[]
+  cart              Cart?
+  refreshTokens     RefreshToken[]
+  notifications     Notification[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique // hash do token, nunca o raw
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ============================================================
+// PERFIS POR ROLE
+// ============================================================
+
+model SupplierProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  companyName    String
+  tradeName      String?
+  cnpj           String   @unique
+  ie             String?
+  phone          String
+  commissionRate Float    @default(0.10)
+  description    String?
+  logoUrl        String?
+  coverUrl       String?
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User            @relation(fields: [userId], references: [id])
+  address   SupplierAddress?
+  products  Product[]
+  subOrders SubOrder[]
+
+  @@index([cnpj])
+  @@map("supplier_profiles")
+}
+
+model SupplierAddress {
+  id           String @id @default(uuid())
+  supplierId   String @unique
+  cep          String
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+
+  supplier SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_addresses")
+}
+
+model ContractorProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  companyName     String
+  cnpj            String   @unique
+  ie              String?
+  phone           String
+  creditLimit     Float    @default(0)
+  usedCredit      Float    @default(0)
+  paymentTermDays Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user    User              @relation(fields: [userId], references: [id])
+  address ContractorAddress?
+
+  @@index([cnpj])
+  @@map("contractor_profiles")
+}
+
+model ContractorAddress {
+  id           String @id @default(uuid())
+  contractorId String @unique
+  cep          String
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+
+  contractor ContractorProfile @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+
+  @@map("contractor_addresses")
+}
+
+model BuyerProfile {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  firstName String
+  lastName  String
+  cpf       String? @unique
+  avatarUrl String?
+
+  user      User          @relation(fields: [userId], references: [id])
+  addresses BuyerAddress[]
+
+  @@map("buyer_profiles")
+}
+
+model BuyerAddress {
+  id           String  @id @default(uuid())
+  buyerId      String
+  label        String  @default("Casa")
+  cep          String
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  isDefault    Boolean @default(false)
+
+  buyer BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId])
+  @@map("buyer_addresses")
+}
+
+model DriverProfile {
+  id              String      @id @default(uuid())
+  userId          String      @unique
+  cpf             String      @unique
+  firstName       String
+  lastName        String
+  vehicleType     VehicleType
+  vehiclePlate    String      @unique
+  vehicleBrand    String
+  vehicleModel    String
+  vehicleYear     Int
+  vehicleColor    String
+  isOnline        Boolean     @default(false)
+  currentLat      Float?
+  currentLng      Float?
+  rating          Float       @default(5.0)
+  totalDeliveries Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id])
+  deliveries Delivery[]
+
+  @@index([cpf])
+  @@map("driver_profiles")
+}
+
+// ============================================================
+// DOCUMENTOS E APROVAÇÕES
+// ============================================================
+
+model Document {
+  id              String         @id @default(uuid())
+  userId          String
+  type            DocumentType
+  fileUrl         String
+  fileSize        Int?
+  mimeType        String?
+  status          DocumentStatus @default(PENDING)
+  reviewedAt      DateTime?
+  reviewedById    String?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("documents")
+}
+
+// ============================================================
+// CATÁLOGO
+// ============================================================
+
+model Category {
+  id          String     @id @default(uuid())
+  parentId    String?
+  name        String
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@index([parentId])
+  @@index([slug])
+  @@map("categories")
+}
+
+model Product {
+  id            String        @id @default(uuid())
+  supplierId    String
+  categoryId    String
+  name          String
+  slug          String        @unique
+  description   String?
+  sku           String?       @unique
+  price         Float
+  b2bPrice      Float?
+  moq           Int           @default(1)
+  stock         Int           @default(0)
+  unit          String        @default("un")
+  weightKg      Float?
+  widthCm       Float?
+  heightCm      Float?
+  depthCm       Float?
+  status        ProductStatus @default(ACTIVE)
+  isHighlighted Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  supplier   SupplierProfile @relation(fields: [supplierId], references: [id])
+  category   Category        @relation(fields: [categoryId], references: [id])
+  images     ProductImage[]
+  cartItems  CartItem[]
+  orderItems SubOrderItem[]
+
+  @@index([supplierId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([slug])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// ============================================================
+// CARRINHO
+// ============================================================
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String?  @unique
+  sessionId String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User?      @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+  addedAt   DateTime @default(now())
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+// ============================================================
+// PEDIDOS
+// ============================================================
+
+model Order {
+  id              String        @id @default(uuid())
+  userId          String
+  totalAmount     Float
+  freightTotal    Float         @default(0)
+  discountTotal   Float         @default(0)
+  paymentMethod   PaymentMethod
+  status          OrderStatus   @default(PENDING_PAYMENT)
+  asaasPaymentId  String?
+  asaasInvoiceUrl String?
+  notes           String?
+  deliveryAddress Json
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id])
+  subOrders SubOrder[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model SubOrder {
+  id              String         @id @default(uuid())
+  orderId         String
+  supplierId      String
+  subtotal        Float
+  freightCost     Float          @default(0)
+  commissionRate  Float
+  commissionValue Float
+  status          SubOrderStatus @default(AWAITING_SEPARATION)
+  nfeKey          String?
+  nfeUrl          String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  order    Order           @relation(fields: [orderId], references: [id])
+  supplier SupplierProfile @relation(fields: [supplierId], references: [id])
+  items    SubOrderItem[]
+  delivery Delivery?
+
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("sub_orders")
+}
+
+model SubOrderItem {
+  id          String @id @default(uuid())
+  subOrderId  String
+  productId   String
+  productName String
+  productSku  String?
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+
+  subOrder SubOrder @relation(fields: [subOrderId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@index([subOrderId])
+  @@map("sub_order_items")
+}
+
+// ============================================================
+// ENTREGA
+// ============================================================
+
+model Delivery {
+  id           String         @id @default(uuid())
+  subOrderId   String         @unique
+  driverId     String?
+  status       DeliveryStatus @default(ASSIGNED)
+  trackingCode String?        @unique
+  currentLat   Float?
+  currentLng   Float?
+  estimatedAt  DateTime?
+  deliveredAt  DateTime?
+  failedReason String?
+  proofUrl     String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  subOrder SubOrder        @relation(fields: [subOrderId], references: [id])
+  driver   DriverProfile?  @relation(fields: [driverId], references: [id])
+  tracking DeliveryTracking[]
+
+  @@index([driverId])
+  @@index([status])
+  @@map("deliveries")
+}
+
+model DeliveryTracking {
+  id         String   @id @default(uuid())
+  deliveryId String
+  lat        Float
+  lng        Float
+  recordedAt DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([deliveryId])
+  @@index([recordedAt])
+  @@map("delivery_tracking")
+}
+
+// ============================================================
+// NOTIFICAÇÕES
+// ============================================================
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  type      String
+  data      Json?
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
