@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Request } from 'express';
-import { PaymentsService } from './payments.service';
+import { PaymentsService, CreatePaymentResult, PaymentStatusResult } from './payments.service';
 import { AsaasWebhookDto } from './dto/payment.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -35,7 +35,7 @@ export class PaymentsController {
   createPayment(
     @Req() req: Request,
     @Param('orderId') orderId: string,
-  ) {
+  ): Promise<CreatePaymentResult> {
     const user = req.user as AuthUser;
     return this.paymentsService.createPayment(orderId, user.id);
   }
@@ -60,7 +60,7 @@ export class PaymentsController {
   getPaymentStatus(
     @Req() req: Request,
     @Param('orderId') orderId: string,
-  ) {
+  ): Promise<PaymentStatusResult> {
     const user = req.user as AuthUser;
     return this.paymentsService.getPaymentStatus(orderId, user.id);
   }

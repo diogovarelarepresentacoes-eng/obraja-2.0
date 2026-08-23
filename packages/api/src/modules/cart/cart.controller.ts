@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { Request } from 'express';
-import { CartService } from './cart.service';
+import { CartService, CartResponseDto } from './cart.service';
 import { AddToCartDto, UpdateCartItemDto } from './dto/cart.dto';
 import { Public } from '../../common/decorators/public.decorator';
 
@@ -28,7 +28,7 @@ export class CartController {
   getCart(
     @Req() req: Request,
     @Headers('x-session-id') sessionId?: string,
-  ) {
+  ): Promise<CartResponseDto> {
     const { userId, sessionId: sid } = this.extractContext(req, sessionId);
     return this.cartService.getCart(userId, sid);
   }
@@ -41,7 +41,7 @@ export class CartController {
     @Req() req: Request,
     @Headers('x-session-id') sessionId: string | undefined,
     @Body() dto: AddToCartDto,
-  ) {
+  ): Promise<CartResponseDto> {
     const { userId, sessionId: sid } = this.extractContext(req, sessionId);
     return this.cartService.addItem(userId, sid, dto);
   }
@@ -55,7 +55,7 @@ export class CartController {
     @Headers('x-session-id') sessionId: string | undefined,
     @Param('productId') productId: string,
     @Body() dto: UpdateCartItemDto,
-  ) {
+  ): Promise<CartResponseDto> {
     const { userId, sessionId: sid } = this.extractContext(req, sessionId);
     return this.cartService.updateItem(userId, sid, productId, dto);
   }
@@ -67,7 +67,7 @@ export class CartController {
   clearCart(
     @Req() req: Request,
     @Headers('x-session-id') sessionId: string | undefined,
-  ) {
+  ): Promise<CartResponseDto> {
     const { userId, sessionId: sid } = this.extractContext(req, sessionId);
     return this.cartService.clearCart(userId, sid);
   }
@@ -79,7 +79,7 @@ export class CartController {
   mergeGuestCart(
     @Req() req: Request,
     @Headers('x-session-id') sessionId: string,
-  ) {
+  ): Promise<CartResponseDto> {
     const user = req.user as { id: string };
     return this.cartService.mergeGuestCart(user.id, sessionId);
   }
