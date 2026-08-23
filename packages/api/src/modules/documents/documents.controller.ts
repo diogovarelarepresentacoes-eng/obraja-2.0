@@ -37,7 +37,7 @@ export class DocumentsController {
   upload(
     @Param('userId') userId: string,
     @Query('type') type: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number; originalname: string },
   ) {
     if (!file) throw new BadRequestException('Arquivo obrigatório');
     if (!type || !VALID_DOC_TYPES.has(type as DocumentType)) {

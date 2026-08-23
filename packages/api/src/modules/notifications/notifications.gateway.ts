@@ -3,12 +3,15 @@ import {
   WebSocketGateway,
   WebSocketServer,
   SubscribeMessage,
-  ConnectedSocket,
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
-import { Server, Socket } from 'socket.io';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Server = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Socket = any;
 
 interface JwtPayload {
   sub: string;

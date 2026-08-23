@@ -36,7 +36,7 @@ export class DocumentsService {
   async uploadForPending(
     userId: string,
     docType: DocumentType,
-    file: Express.Multer.File,
+    file: { buffer: Buffer; mimetype: string; size: number; originalname: string },
   ) {
     if (!ALLOWED_MIME.has(file.mimetype)) {
       throw new BadRequestException(

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsGateway } from './notifications.gateway';
 import { CreateNotificationDto } from './dto/notification.dto';
@@ -24,7 +25,7 @@ export class NotificationsService {
         title: dto.title,
         body: dto.body,
         type: dto.type,
-        data: dto.data ?? undefined,
+        data: (dto.data ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
 
