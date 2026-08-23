@@ -24,7 +24,7 @@ interface UserDetail {
   };
   contractorProfile?: {
     companyName: string; cnpj: string; ie?: string; phone: string;
-    address?: { cep: string; street: string; number: string; city: string; state: string };
+    address?: { cep: string; street: string; number: string; complement?: string; city: string; state: string };
   };
   driverProfile?: {
     firstName: string; lastName: string; cpf: string; vehicleType: string;
