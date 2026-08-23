@@ -24,7 +24,7 @@ const CART_ITEM_INCLUDE = {
   },
 } as const;
 
-interface CartProduct {
+export interface CartProduct {
   id: string;
   name: string;
   slug: string;
@@ -47,19 +47,26 @@ export interface CartItemWithProduct {
   product: CartProduct;
 }
 
-interface CartBase {
+interface CartWithItems {
   id: string;
   userId: string | null;
   sessionId: string | null;
   createdAt: Date;
   updatedAt: Date;
-}
-
-interface CartWithItems extends CartBase {
   items: CartItemWithProduct[];
 }
 
-function computeTotals(cart: CartWithItems) {
+export interface CartResponseDto {
+  id: string;
+  userId: string | null;
+  sessionId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  items: CartItemWithProduct[];
+  subtotal: number;
+}
+
+function computeTotals(cart: CartWithItems): CartResponseDto {
   const subtotal = cart.items.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0,

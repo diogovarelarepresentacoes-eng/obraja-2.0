@@ -25,7 +25,7 @@ interface AsaasPayment {
   status: string;
 }
 
-interface AsaasPixQrCode {
+export interface AsaasPixQrCode {
   encodedImage: string;
   payload: string;
   expirationDate: string;
