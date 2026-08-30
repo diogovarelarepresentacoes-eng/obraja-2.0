@@ -17,6 +17,26 @@ interface RegisterResponse {
   message?: string;
 }
 
+function maskPhone(v: string) {
+  return v.replace(/\D/g, '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3').slice(0, 15);
+}
+
+function passwordStrength(pwd: string): { level: 0 | 1 | 2 | 3; label: string; color: string } {
+  if (pwd.length === 0) return { level: 0, label: '', color: '' };
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 1) return { level: 1, label: 'Fraca', color: '#EF4444' };
+  if (score === 2) return { level: 2, label: 'Média', color: '#F59E0B' };
+  return { level: 3, label: 'Forte', color: '#22C55E' };
+}
+
+const inputCls =
+  'w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-100 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-orange-400 transition';
+const labelCls = 'block text-xs font-semibold text-gray-600 mb-1.5';
+
 export default function CadastroPage() {
   const router = useRouter();
 
@@ -28,6 +48,8 @@ export default function CadastroPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const strength = passwordStrength(password);
 
   function validate(): string | null {
     if (!firstName.trim()) return 'Nome obrigatório';
@@ -43,10 +65,7 @@ export default function CadastroPage() {
     setError(null);
 
     const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (validationError) { setError(validationError); return; }
 
     setLoading(true);
     try {
@@ -67,10 +86,7 @@ export default function CadastroPage() {
 
       const data = (await res.json()) as RegisterResponse;
 
-      if (!res.ok) {
-        setError(data?.message ?? 'Erro ao criar conta');
-        return;
-      }
+      if (!res.ok) { setError(data?.message ?? 'Erro ao criar conta'); return; }
 
       if (data.data?.accessToken) {
         setBuyerToken(data.data.accessToken);
@@ -87,107 +103,140 @@ export default function CadastroPage() {
   }
 
   return (
-    <div
-      className="w-full max-w-md bg-white rounded-[20px] px-8 py-10"
-      style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
-    >
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Criar conta</h1>
-      <p className="text-sm text-gray-500 mb-8">Compre materiais de construção com facilidade</p>
+    <div className="w-full max-w-sm">
+      {/* Header text */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-gray-900" style={{ fontFamily: 'var(--font-montserrat)' }}>
+          Criar conta
+        </h1>
+        <p className="text-gray-500 mt-1.5 text-sm">
+          Gratuito. Sem burocracia. Comece agora.
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        {/* Nome */}
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">Nome</label>
+            <label className={labelCls}>Nome *</label>
             <input
               type="text"
               autoComplete="given-name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="João"
-              className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-              style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+              className={inputCls}
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">Sobrenome</label>
+            <label className={labelCls}>Sobrenome *</label>
             <input
               type="text"
               autoComplete="family-name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               placeholder="Silva"
-              className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-              style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+              className={inputCls}
             />
           </div>
         </div>
 
+        {/* E-mail */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">E-mail</label>
+          <label className={labelCls}>E-mail *</label>
           <input
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
-            className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-            style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+            className={inputCls}
           />
         </div>
 
+        {/* Telefone */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">
-            Telefone <span className="text-gray-400 font-normal">(opcional)</span>
+          <label className={labelCls}>
+            Telefone{' '}
+            <span className="font-normal text-gray-400">(opcional)</span>
           </label>
           <input
             type="tel"
             autoComplete="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(maskPhone(e.target.value))}
             placeholder="(11) 99999-9999"
-            className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-            style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+            className={inputCls}
           />
         </div>
 
+        {/* Senha + strength */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">Senha</label>
+          <label className={labelCls}>Senha *</label>
           <input
             type="password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Mínimo 6 caracteres"
-            className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-            style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+            className={inputCls}
           />
+          {strength.level > 0 && (
+            <div className="mt-2">
+              <div className="flex gap-1">
+                {[1, 2, 3].map((bar) => (
+                  <div
+                    key={bar}
+                    className="flex-1 h-1 rounded-full transition-colors duration-300"
+                    style={{ backgroundColor: bar <= strength.level ? strength.color : '#E5E7EB' }}
+                  />
+                ))}
+              </div>
+              <p className="text-xs mt-1" style={{ color: strength.color }}>
+                {strength.label}
+              </p>
+            </div>
+          )}
         </div>
 
+        {/* Confirmar senha */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">Confirmar senha</label>
+          <label className={labelCls}>Confirmar senha *</label>
           <input
             type="password"
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Repita a senha"
-            className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-            style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+            className={inputCls}
           />
+          {confirmPassword && password !== confirmPassword && (
+            <p className="text-xs mt-1 text-red-500">As senhas não coincidem</p>
+          )}
+          {confirmPassword && password === confirmPassword && password.length > 0 && (
+            <p className="text-xs mt-1 text-green-600">Senhas coincidem ✓</p>
+          )}
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 font-medium">{error}</p>
+          <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-600 border border-red-100">
+            {error}
+          </div>
         )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 rounded-xl font-bold text-white text-sm transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+          className="w-full py-3.5 rounded-xl font-bold text-white text-sm transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: '#E8622C' }}
         >
-          {loading ? 'Criando conta...' : 'Criar conta'}
+          {loading ? 'Criando conta...' : 'Criar conta grátis →'}
         </button>
+
+        <p className="text-xs text-gray-400 text-center">
+          Ao criar uma conta você concorda com os{' '}
+          <a href="#" className="underline">Termos de Uso</a>
+        </p>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-500">

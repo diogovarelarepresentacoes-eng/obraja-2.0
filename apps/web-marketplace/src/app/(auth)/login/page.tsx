@@ -17,6 +17,9 @@ interface LoginResponse {
   message?: string;
 }
 
+const inputCls =
+  'w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-100 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-orange-400 transition';
+
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,64 +66,108 @@ function LoginPageContent() {
   }
 
   return (
-    <div
-      className="w-full max-w-md bg-white rounded-[20px] px-8 py-10"
-      style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
-    >
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Entrar</h1>
-      <p className="text-sm text-gray-500 mb-8">Acesse sua conta ObraJá</p>
+    <div className="w-full max-w-sm">
+      {/* Header text */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-gray-900" style={{ fontFamily: 'var(--font-montserrat)' }}>
+          Bem-vindo de volta
+        </h1>
+        <p className="text-gray-500 mt-1.5 text-sm">
+          Entre com seu e-mail e senha para continuar
+        </p>
+      </div>
 
       {successMsg && (
-        <div className="mb-5 px-4 py-3 rounded-xl text-sm font-medium" style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}>
+        <div className="mb-6 px-4 py-3 rounded-xl text-sm font-medium bg-green-50 text-green-700 border border-green-100">
           {successMsg}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">E-mail</label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1.5">E-mail</label>
           <input
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
-            className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-            style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+            className={inputCls}
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">Senha</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-semibold text-gray-600">Senha</label>
+            <Link
+              href="/esqueci-senha"
+              className="text-xs hover:underline"
+              style={{ color: '#E8622C' }}
+            >
+              Esqueceu a senha?
+            </Link>
+          </div>
           <input
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 transition"
-            style={{ '--tw-ring-color': '#E8622C' } as React.CSSProperties}
+            className={inputCls}
           />
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 font-medium">{error}</p>
+          <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-600 border border-red-100">
+            {error}
+          </div>
         )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 rounded-xl font-bold text-white text-sm transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3.5 rounded-xl font-bold text-white text-sm transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: '#E8622C' }}
         >
-          {loading ? 'Entrando...' : 'Entrar'}
+          {loading ? 'Entrando...' : 'Entrar na conta'}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      {/* Divider */}
+      <div className="my-6 flex items-center gap-3">
+        <div className="flex-1 h-px bg-gray-100" />
+        <span className="text-xs text-gray-400">ou</span>
+        <div className="flex-1 h-px bg-gray-100" />
+      </div>
+
+      {/* Outros acessos */}
+      <div className="space-y-3">
+        <Link
+          href="/cadastro-fornecedor"
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <span>🏭</span>
+            <span>Acessar como <strong>fornecedor</strong></span>
+          </span>
+          <span className="text-gray-400">→</span>
+        </Link>
+        <Link
+          href="/cadastro-entregador"
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <span>🚛</span>
+            <span>Acessar como <strong>entregador</strong></span>
+          </span>
+          <span className="text-gray-400">→</span>
+        </Link>
+      </div>
+
+      <p className="mt-8 text-center text-sm text-gray-500">
         Ainda não tem conta?{' '}
         <Link href="/cadastro" className="font-semibold hover:underline" style={{ color: '#E8622C' }}>
-          Cadastre-se
+          Criar conta grátis
         </Link>
       </p>
     </div>
