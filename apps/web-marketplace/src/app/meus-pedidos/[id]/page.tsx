@@ -76,7 +76,6 @@ function StatusBadge({ status, labels, styles }: { status: string; labels: Recor
 }
 
 function SubOrderTimeline({ status }: { status: string }) {
-  const cancelledIdx = status === 'CANCELLED' ? -1 : null;
   const currentIdx = SUBORDER_TIMELINE.findIndex((s) => s.key === status);
 
   if (status === 'CANCELLED') {
