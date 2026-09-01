@@ -7,7 +7,9 @@ import {
   Req,
   Logger,
   Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { createHmac } from 'crypto';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Request } from 'express';
 import { PaymentsService, CreatePaymentResult, PaymentStatusResult } from './payments.service';
@@ -45,9 +47,20 @@ export class PaymentsController {
   @ApiOperation({ summary: 'Webhook Asaas — notificações de pagamento' })
   async handleWebhook(
     @Body() dto: AsaasWebhookDto,
-    @Headers('asaas-signature') _signature?: string,
+    @Req() req: Request & { rawBody?: Buffer },
+    @Headers('asaas-signature') signature?: string,
   ) {
-    // TODO: in production, verify asaas-signature header against payload hash
+    if (process.env.NODE_ENV === 'production') {
+      const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+      if (webhookToken && req.rawBody) {
+        const expected = createHmac('sha256', webhookToken)
+          .update(req.rawBody)
+          .digest('hex');
+        if (signature !== expected) {
+          throw new UnauthorizedException('Assinatura de webhook inválida');
+        }
+      }
+    }
     this.logger.log(`Webhook recebido: evento=${dto.event}`);
     await this.paymentsService.handleWebhook(dto);
     return { received: true };

@@ -105,6 +105,8 @@ export class PaymentsService {
   private async upsertAsaasCustomer(
     email: string,
     phone: string | null,
+    name: string,
+    cpfCnpj?: string | null,
   ): Promise<AsaasCustomer> {
     const existing = await this.asaasRequest<AsaasCustomerListResponse>(
       'GET',
@@ -115,12 +117,10 @@ export class PaymentsService {
       return existing.data[0];
     }
 
-    return this.asaasRequest<AsaasCustomer>('POST', '/customers', {
-      name: email,
-      email,
-      cpfCnpj: email, // placeholder — real CPF/CNPJ to be added later
-      mobilePhone: phone ?? '',
-    });
+    const body: Record<string, unknown> = { name, email, mobilePhone: phone ?? '' };
+    if (cpfCnpj) body.cpfCnpj = cpfCnpj;
+
+    return this.asaasRequest<AsaasCustomer>('POST', '/customers', body);
   }
 
   private getDueDate(daysFromNow: number): string {
@@ -134,7 +134,13 @@ export class PaymentsService {
       where: { id: orderId },
       include: {
         user: {
-          select: { id: true, email: true, phone: true },
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            buyerProfile: { select: { firstName: true, lastName: true, cpf: true } },
+            contractorProfile: { select: { companyName: true, cnpj: true } },
+          },
         },
       },
     });
@@ -147,9 +153,24 @@ export class PaymentsService {
       throw new NotFoundException(`Pedido ${orderId} não encontrado`);
     }
 
+    let customerName: string;
+    let cpfCnpj: string | null | undefined;
+    if (order.user.contractorProfile) {
+      customerName = order.user.contractorProfile.companyName;
+      cpfCnpj = order.user.contractorProfile.cnpj;
+    } else if (order.user.buyerProfile) {
+      customerName = `${order.user.buyerProfile.firstName} ${order.user.buyerProfile.lastName}`;
+      cpfCnpj = order.user.buyerProfile.cpf;
+    } else {
+      customerName = order.user.email;
+      cpfCnpj = undefined;
+    }
+
     const customer = await this.upsertAsaasCustomer(
       order.user.email,
       order.user.phone,
+      customerName,
+      cpfCnpj,
     );
 
     const description = `Pedido ObraJá #${orderId}`;

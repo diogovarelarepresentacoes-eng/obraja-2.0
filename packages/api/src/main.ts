@@ -13,7 +13,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RolesGuard } from './common/guards/roles.guard';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
   const reflector = app.get(Reflector);
 
