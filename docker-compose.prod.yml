@@ -28,7 +28,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.obraja-api.rule=Host(`api.srv1131489.hstgr.cloud`)"
       - "traefik.http.routers.obraja-api.entrypoints=websecure"
-      - "traefik.http.routers.obraja-api.tls.certresolver=myresolver"
+      - "traefik.http.routers.obraja-api.tls=true"
+      - "traefik.http.routers.obraja-api.tls.certresolver=mytlschallenge"
       - "traefik.http.services.obraja-api.loadbalancer.server.port=3001"
       - "traefik.docker.network=n8n_default"
 
@@ -47,7 +48,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.obraja-marketplace.rule=Host(`obraja.srv1131489.hstgr.cloud`)"
       - "traefik.http.routers.obraja-marketplace.entrypoints=websecure"
-      - "traefik.http.routers.obraja-marketplace.tls.certresolver=myresolver"
+      - "traefik.http.routers.obraja-marketplace.tls=true"
+      - "traefik.http.routers.obraja-marketplace.tls.certresolver=mytlschallenge"
       - "traefik.http.services.obraja-marketplace.loadbalancer.server.port=3000"
       - "traefik.docker.network=n8n_default"
 
@@ -66,6 +68,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.obraja-admin.rule=Host(`admin.srv1131489.hstgr.cloud`)"
       - "traefik.http.routers.obraja-admin.entrypoints=websecure"
-      - "traefik.http.routers.obraja-admin.tls.certresolver=myresolver"
+      - "traefik.http.routers.obraja-admin.tls=true"
+      - "traefik.http.routers.obraja-admin.tls.certresolver=mytlschallenge"
       - "traefik.http.services.obraja-admin.loadbalancer.server.port=3002"
       - "traefik.docker.network=n8n_default"
