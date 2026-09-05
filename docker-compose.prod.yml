@@ -49,3 +49,22 @@ services:
       - "traefik.http.routers.obraja-marketplace.tls.certresolver=myresolver"
       - "traefik.http.services.obraja-marketplace.loadbalancer.server.port=3000"
       - "traefik.docker.network=n8n_default"
+
+  obraja-admin:
+    image: obraja-admin:latest
+    container_name: obraja_admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: https://api.srv1131489.hstgr.cloud/api/v1
+    networks:
+      - n8n_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.obraja-admin.rule=Host(`admin.srv1131489.hstgr.cloud`)"
+      - "traefik.http.routers.obraja-admin.entrypoints=websecure"
+      - "traefik.http.routers.obraja-admin.tls.certresolver=myresolver"
+      - "traefik.http.services.obraja-admin.loadbalancer.server.port=3002"
+      - "traefik.docker.network=n8n_default"
