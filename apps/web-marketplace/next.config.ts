@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   transpilePackages: ['@obraja/types', '@obraja/ui'],
   images: {
     remotePatterns: [
@@ -15,7 +16,13 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    serverActions: { allowedOrigins: ['localhost:3000', 'loja.divixstudio.io'] },
+    serverActions: {
+      allowedOrigins: [
+        'localhost:3000',
+        'obraja.srv1131489.hstgr.cloud',
+        '31.97.173.136',
+      ],
+    },
   },
 };
 

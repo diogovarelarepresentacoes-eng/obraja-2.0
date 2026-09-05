@@ -117,17 +117,17 @@ export default function CadastroFornecedorPage() {
     if (form.password !== form.confirmPassword) { setError('As senhas não coincidem'); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await fetch(`${API_BASE}/suppliers/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: form.email.trim(), password: form.password,
-          firstName: form.tradeName.trim() || form.companyName.trim(), lastName: '',
+          email: form.email.trim(),
+          password: form.password,
           role: form.supplierType,
           companyName: form.companyName.trim(),
           tradeName: form.tradeName.trim() || undefined,
           cnpj: form.cnpj.replace(/\D/g, ''),
-          stateRegistration: form.stateRegistration.trim() || undefined,
+          ie: form.stateRegistration.trim() || undefined,
           phone: form.phone.trim(),
           address: {
             cep: form.cep.replace(/\D/g, ''), street: form.street.trim(), number: form.number.trim(),
@@ -136,9 +136,9 @@ export default function CadastroFornecedorPage() {
           },
         }),
       });
-      const body = await res.json() as { success?: boolean; data?: { userId?: string; id?: string }; message?: string };
+      const body = await res.json() as { userId?: string; message?: string };
       if (!res.ok) { setError(body?.message ?? 'Erro ao criar conta'); return; }
-      setUserId(body.data?.userId ?? body.data?.id ?? null);
+      setUserId(body.userId ?? null);
       setStep(6);
     } catch { setError('Erro de conexão. Tente novamente.'); }
     finally { setLoading(false); }

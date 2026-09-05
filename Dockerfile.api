@@ -1,0 +1,49 @@
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+RUN npm install -g pnpm@9.1.0
+
+# Install dependencies first (better layer caching)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/types/package.json ./packages/types/
+COPY packages/api/package.json ./packages/api/
+COPY packages/database/package.json ./packages/database/
+COPY packages/config/package.json ./packages/config/
+
+RUN pnpm install --frozen-lockfile
+
+# Copy source files
+COPY packages/config ./packages/config
+COPY packages/types/src ./packages/types/src
+COPY packages/types/tsconfig.json ./packages/types/
+COPY packages/database/prisma ./packages/database/prisma
+COPY packages/api/src ./packages/api/src
+COPY packages/api/tsconfig.json ./packages/api/
+COPY packages/api/nest-cli.json ./packages/api/
+
+# Build types first, then generate Prisma client, then build API
+RUN pnpm --filter @obraja/types build
+RUN pnpm --filter @obraja/database generate
+RUN pnpm --filter @obraja/api build
+
+# ---- Runtime stage ----
+FROM node:20-alpine
+WORKDIR /app
+
+RUN apk add --no-cache openssl
+
+# Root node_modules has the pnpm virtual store (.pnpm/) with all packages
+COPY --from=builder /app/node_modules ./node_modules
+# packages/api/node_modules has workspace symlinks (e.g. @nestjs/core -> ../../node_modules/.pnpm/...)
+COPY --from=builder /app/packages/api/node_modules ./packages/api/node_modules
+COPY --from=builder /app/packages/api/dist ./packages/api/dist
+# @obraja/types workspace package: symlink in packages/api/node_modules resolves to packages/types
+COPY --from=builder /app/packages/types ./packages/types
+COPY --from=builder /app/packages/database/prisma ./prisma
+COPY packages/api/package.json ./packages/api/
+
+ENV NODE_ENV=production
+ENV PORT=3001
+EXPOSE 3001
+
+CMD ["node", "packages/api/dist/main"]

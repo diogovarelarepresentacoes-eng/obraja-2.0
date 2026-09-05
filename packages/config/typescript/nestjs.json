@@ -8,6 +8,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "allowSyntheticDefaultImports": true,
+    "useDefineForClassFields": false,
     "outDir": "./dist",
     "rootDir": "./src",
     "incremental": true
