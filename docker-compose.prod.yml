@@ -20,6 +20,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: 7d
       PORT: 3001
       NODE_ENV: production
+      CORS_ORIGINS: https://obraja.srv1131489.hstgr.cloud,https://admin.srv1131489.hstgr.cloud,https://supplier.srv1131489.hstgr.cloud
     networks:
       - n8n_default
       - obraja_default
