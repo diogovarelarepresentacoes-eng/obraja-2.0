@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 type Step = 1 | 2 | 3 | 4 | 5;
-type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
+type DocType = 'CONTRATO_SOCIAL' | 'CNPJ' | 'INSCRICAO_ESTADUAL';
 
 interface FormData {
   role: 'SUPPLIER_STORE' | 'SUPPLIER_FACTORY';
@@ -61,24 +61,21 @@ const STEPS = ['Tipo', 'Empresa', 'Endereço', 'Acesso', 'Documentos'];
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 const DOC_CONFIG = [
-  { type: 'CONTRATO_SOCIAL', label: 'Contrato Social', required: true },
-  { type: 'CNPJ', label: 'Cartão CNPJ', required: true },
-  { type: 'INSCRICAO_ESTADUAL', label: 'Inscrição Estadual', required: false },
-] as const;
+  { type: 'CONTRATO_SOCIAL' as DocType, label: 'Contrato Social', required: true },
+  { type: 'CNPJ' as DocType, label: 'Cartão CNPJ', required: true },
+  { type: 'INSCRICAO_ESTADUAL' as DocType, label: 'Inscrição Estadual', required: false },
+];
 
 export default function CadastroPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(INITIAL);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [uploads, setUploads] = useState<Record<string, UploadStatus>>({
-    CONTRATO_SOCIAL: 'idle',
-    CNPJ: 'idle',
-    INSCRICAO_ESTADUAL: 'idle',
+  const [selectedFiles, setSelectedFiles] = useState<Record<DocType, File | null>>({
+    CONTRATO_SOCIAL: null, CNPJ: null, INSCRICAO_ESTADUAL: null,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   function set(field: keyof FormData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -112,35 +109,42 @@ export default function CadastroPage() {
     setStep((s) => Math.min(s + 1, 4) as Step);
   }
 
-  async function handleSubmit(e: FormEvent) {
+  function handlePasswordNext(e: FormEvent) {
     e.preventDefault();
     setError('');
-
-    if (form.password !== form.confirmPassword) {
-      setError('As senhas não conferem');
+    if (!form.email.trim() || !form.email.includes('@')) {
+      setError('E-mail inválido');
       return;
     }
     if (form.password.length < 8) {
       setError('Senha deve ter ao menos 8 caracteres');
       return;
     }
+    if (form.password !== form.confirmPassword) {
+      setError('As senhas não conferem');
+      return;
+    }
+    setStep(5);
+  }
 
-    setLoading(true);
+  async function handleConcluir() {
+    setError('');
+    setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/suppliers/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: form.email,
+          email: form.email.trim(),
           password: form.password,
           phone: form.phone,
           companyName: form.companyName,
           tradeName: form.tradeName || undefined,
-          cnpj: form.cnpj,
+          cnpj: form.cnpj.replace(/\D/g, ''),
           ie: form.ie || undefined,
           role: form.role,
           address: {
-            cep: form.cep,
+            cep: form.cep.replace(/\D/g, ''),
             street: form.street,
             number: form.number,
             complement: form.complement || undefined,
@@ -151,15 +155,32 @@ export default function CadastroPage() {
         }),
       });
       const body = await res.json() as { success?: boolean; data?: { userId?: string }; message?: string };
-      if (!res.ok) throw new Error(body.message ?? 'Erro ao cadastrar');
-      setUserId(body.data?.userId ?? null);
-      setStep(5);
+      if (!res.ok) { setError(body.message ?? 'Erro ao cadastrar'); return; }
+      const userId = body.data?.userId;
+      if (!userId) { setError('Erro inesperado ao criar conta. Tente novamente.'); return; }
+
+      for (const { type } of DOC_CONFIG) {
+        const file = selectedFiles[type];
+        if (!file) continue;
+        const fd = new FormData();
+        fd.append('file', file);
+        const docRes = await fetch(`${API_BASE}/documents/pending/${userId}?type=${type}`, {
+          method: 'POST', body: fd,
+        });
+        if (!docRes.ok) {
+          const b = await docRes.json().catch(() => ({})) as { message?: string };
+          throw new Error(b.message ?? 'Erro ao enviar documento');
+        }
+      }
+      router.push('/pendente');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao cadastrar');
+      setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
+
+  const allRequiredSelected = DOC_CONFIG.filter((d) => d.required).every((d) => selectedFiles[d.type] !== null);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
@@ -187,19 +208,14 @@ export default function CadastroPage() {
                 <div className="flex flex-col items-center flex-shrink-0">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                    style={{
-                      backgroundColor: done ? '#16A34A' : active ? '#F05A28' : '#D1D5DB',
-                    }}
+                    style={{ backgroundColor: done ? '#16A34A' : active ? '#F05A28' : '#D1D5DB' }}
                   >
                     {done ? '✓' : s}
                   </div>
                   <span className="text-xs mt-1 text-gray-500 whitespace-nowrap">{label}</span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div
-                    className="flex-1 h-0.5 mx-2"
-                    style={{ backgroundColor: done ? '#16A34A' : '#E5E7EB' }}
-                  />
+                  <div className="flex-1 h-0.5 mx-2" style={{ backgroundColor: done ? '#16A34A' : '#E5E7EB' }} />
                 )}
               </div>
             );
@@ -352,7 +368,7 @@ export default function CadastroPage() {
 
           {/* Etapa 4 — Acesso */}
           {step === 4 && (
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handlePasswordNext}>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Dados de acesso</h2>
               <div className="space-y-3">
                 <div>
@@ -381,28 +397,23 @@ export default function CadastroPage() {
               </div>
               <div className="flex gap-3 mt-5">
                 <button type="button" onClick={() => setStep(3)} className="flex-1 py-2.5 rounded-lg text-sm border border-gray-200 text-gray-600">← Voltar</button>
-                <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: '#F05A28' }}>
-                  {loading ? 'Processando...' : 'Continuar →'}
+                <button type="submit" className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: '#F05A28' }}>
+                  Continuar →
                 </button>
               </div>
             </form>
           )}
 
           {/* Etapa 5 — Documentos */}
-          {step === 5 && !userId && (
-            <p className="text-sm text-red-600 text-center py-4">
-              Erro ao obter dados do cadastro. Por favor, tente novamente.
-            </p>
-          )}
-          {step === 5 && userId && (
+          {step === 5 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Documentos</h2>
               <p className="text-xs text-gray-400 mb-4">
-                Envie os documentos da empresa para análise. Formatos aceitos: PDF, JPG, PNG (máx. 10 MB).
+                Selecione os documentos da empresa. Eles serão enviados ao concluir o cadastro. Formatos: PDF, JPG, PNG (máx. 10 MB).
               </p>
               <div className="space-y-3">
                 {DOC_CONFIG.map(({ type, label, required }) => {
-                  const status = uploads[type];
+                  const file = selectedFiles[type];
                   return (
                     <div key={type} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
                       <div>
@@ -410,43 +421,25 @@ export default function CadastroPage() {
                           {label}
                           {required && <span className="text-red-400 ml-1">*</span>}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {status === 'done' ? '✓ Enviado' : status === 'error' ? '✗ Erro — tente novamente' : status === 'uploading' ? 'Enviando...' : 'Não enviado'}
+                        <p className="text-xs mt-0.5">
+                          {file
+                            ? <span className="text-green-600">✓ {file.name}</span>
+                            : <span className="text-gray-400">{required ? 'Obrigatório' : 'Opcional'}</span>}
                         </p>
                       </div>
                       <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                        status === 'done'
+                        file
                           ? 'border-green-200 text-green-700 bg-green-50'
-                          : status === 'uploading'
-                          ? 'border-gray-200 text-gray-400 pointer-events-none'
                           : 'border-orange-200 text-orange-600 hover:bg-orange-50'
                       }`}>
-                        {status === 'done' ? 'Trocar' : status === 'uploading' ? '...' : 'Escolher'}
+                        {file ? 'Trocar' : 'Escolher'}
                         <input
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.webp"
                           className="hidden"
-                          disabled={status === 'uploading'}
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            setUploads((prev) => ({ ...prev, [type]: 'uploading' }));
-                            try {
-                              const fd = new FormData();
-                              fd.append('file', file);
-                              const res = await fetch(
-                                `${API_BASE}/documents/pending/${userId}?type=${type}`,
-                                { method: 'POST', body: fd },
-                              );
-                              if (!res.ok) {
-                                const body = await res.json().catch(() => ({})) as { message?: string };
-                                throw new Error(body.message ?? 'Erro ao enviar');
-                              }
-                              setUploads((prev) => ({ ...prev, [type]: 'done' }));
-                            } catch (err) {
-                              setUploads((prev) => ({ ...prev, [type]: 'error' }));
-                              setError(err instanceof Error ? err.message : 'Erro ao enviar documento');
-                            }
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] ?? null;
+                            setSelectedFiles((prev) => ({ ...prev, [type]: f }));
                             e.target.value = '';
                           }}
                         />
@@ -459,13 +452,16 @@ export default function CadastroPage() {
                 * Obrigatórios. Você pode enviar a Inscrição Estadual depois.
               </p>
               <button
-                onClick={() => router.push('/pendente')}
-                disabled={uploads.CONTRATO_SOCIAL !== 'done' || uploads.CNPJ !== 'done'}
+                onClick={handleConcluir}
+                disabled={!allRequiredSelected || submitting}
                 className="w-full mt-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
                 style={{ backgroundColor: '#F05A28' }}
               >
-                Concluir cadastro
+                {submitting ? 'Finalizando cadastro...' : 'Concluir cadastro'}
               </button>
+              {!allRequiredSelected && (
+                <p className="text-center text-xs text-gray-400 mt-2">Selecione todos os documentos obrigatórios para continuar</p>
+              )}
             </div>
           )}
         </div>

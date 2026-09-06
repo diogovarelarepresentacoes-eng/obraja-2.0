@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 type Step = 1 | 2 | 3 | 4;
-type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
+type DocType = 'CNH_FRENTE' | 'CNH_VERSO' | 'CRLV' | 'SELFIE_DOCUMENTO';
 
 interface FormData {
   firstName: string; lastName: string; cpf: string;
@@ -33,11 +33,11 @@ const VEHICLE_TYPES = [
 ];
 
 const DOC_CONFIG = [
-  { type: 'CNH_FRENTE', label: 'CNH (Frente)', required: true },
-  { type: 'CNH_VERSO', label: 'CNH (Verso)', required: true },
-  { type: 'CRLV', label: 'CRLV do Veículo', required: true },
-  { type: 'SELFIE_DOCUMENTO', label: 'Selfie com Documento', required: true },
-] as const;
+  { type: 'CNH_FRENTE' as DocType, label: 'CNH (Frente)', required: true },
+  { type: 'CNH_VERSO' as DocType, label: 'CNH (Verso)', required: true },
+  { type: 'CRLV' as DocType, label: 'CRLV do Veículo', required: true },
+  { type: 'SELFIE_DOCUMENTO' as DocType, label: 'Selfie com Documento', required: true },
+];
 
 function maskCpf(v: string) {
   return v.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4').slice(0, 14);
@@ -57,11 +57,10 @@ export default function CadastroEntregadorPage() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(INITIAL);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [uploads, setUploads] = useState<Record<string, UploadStatus>>({
-    CNH_FRENTE: 'idle', CNH_VERSO: 'idle', CRLV: 'idle', SELFIE_DOCUMENTO: 'idle',
+  const [selectedFiles, setSelectedFiles] = useState<Record<DocType, File | null>>({
+    CNH_FRENTE: null, CNH_VERSO: null, CRLV: null, SELFIE_DOCUMENTO: null,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   function set(field: keyof FormData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -92,13 +91,17 @@ export default function CadastroEntregadorPage() {
     setStep((s) => (s + 1) as Step);
   }
 
-  async function handleSubmit(e: FormEvent) {
+  function handlePasswordNext(e: FormEvent) {
     e.preventDefault();
     setError('');
-    if (form.password !== form.confirmPassword) { setError('As senhas não conferem'); return; }
     if (form.password.length < 8) { setError('Senha deve ter ao menos 8 caracteres'); return; }
+    if (form.password !== form.confirmPassword) { setError('As senhas não conferem'); return; }
+    setStep(4);
+  }
 
-    setLoading(true);
+  async function handleConcluir() {
+    setError('');
+    setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/drivers/register`, {
         method: 'POST',
@@ -119,19 +122,32 @@ export default function CadastroEntregadorPage() {
         }),
       });
       const body = await res.json() as { success?: boolean; data?: { userId?: string }; message?: string };
-      if (!res.ok) throw new Error(body.message ?? 'Erro ao cadastrar');
-      setUserId(body.data?.userId ?? null);
-      setStep(4);
+      if (!res.ok) { setError(body.message ?? 'Erro ao cadastrar'); return; }
+      const userId = body.data?.userId;
+      if (!userId) { setError('Erro inesperado ao criar conta. Tente novamente.'); return; }
+
+      for (const { type } of DOC_CONFIG) {
+        const file = selectedFiles[type];
+        if (!file) continue;
+        const fd = new FormData();
+        fd.append('file', file);
+        const docRes = await fetch(`${API_BASE}/documents/pending/${userId}?type=${type}`, {
+          method: 'POST', body: fd,
+        });
+        if (!docRes.ok) {
+          const b = await docRes.json().catch(() => ({})) as { message?: string };
+          throw new Error(b.message ?? 'Erro ao enviar documento');
+        }
+      }
+      router.push('/cadastro-entregador/pendente');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao cadastrar');
+      setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
-  const allRequiredUploaded = DOC_CONFIG.filter((d) => d.required).every(
-    (d) => uploads[d.type] === 'done',
-  );
+  const allRequiredSelected = DOC_CONFIG.filter((d) => d.required).every((d) => selectedFiles[d.type] !== null);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
@@ -248,7 +264,7 @@ export default function CadastroEntregadorPage() {
 
           {/* Step 3 — Acesso */}
           {step === 3 && (
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handlePasswordNext}>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Dados de acesso</h2>
               <div className="space-y-3">
                 <div>
@@ -267,67 +283,46 @@ export default function CadastroEntregadorPage() {
               </div>
               <div className="flex gap-3 mt-5">
                 <button type="button" onClick={() => setStep(2)} className="flex-1 py-2.5 rounded-lg text-sm border border-gray-200 text-gray-600">← Voltar</button>
-                <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: '#E8622C' }}>
-                  {loading ? 'Processando...' : 'Continuar →'}
+                <button type="submit" className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: '#E8622C' }}>
+                  Continuar →
                 </button>
               </div>
             </form>
           )}
 
           {/* Step 4 — Documentos */}
-          {step === 4 && !userId && (
-            <p className="text-sm text-red-600 text-center py-4">
-              Erro ao obter dados do cadastro. Por favor, tente novamente.
-            </p>
-          )}
-          {step === 4 && userId && (
+          {step === 4 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Documentos</h2>
               <p className="text-xs text-gray-400 mb-4">
-                Envie os documentos para análise. Formatos aceitos: PDF, JPG, PNG (máx. 10 MB cada).
+                Selecione os documentos. Eles serão enviados ao concluir o cadastro. Formatos: PDF, JPG, PNG (máx. 10 MB).
               </p>
               <div className="space-y-3">
                 {DOC_CONFIG.map(({ type, label }) => {
-                  const status = uploads[type];
+                  const file = selectedFiles[type];
                   return (
                     <div key={type} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
                       <div>
                         <p className="text-sm font-medium text-gray-800">{label} <span className="text-red-400">*</span></p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {status === 'done' ? '✓ Enviado' : status === 'error' ? '✗ Erro — tente novamente' : status === 'uploading' ? 'Enviando...' : 'Não enviado'}
+                        <p className="text-xs mt-0.5">
+                          {file
+                            ? <span className="text-green-600">✓ {file.name}</span>
+                            : <span className="text-gray-400">Não selecionado</span>}
                         </p>
                       </div>
                       <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                        status === 'done' ? 'border-green-200 text-green-700 bg-green-50'
-                          : status === 'uploading' ? 'border-gray-200 text-gray-400 pointer-events-none'
+                        file
+                          ? 'border-green-200 text-green-700 bg-green-50'
                           : 'border-orange-200 text-orange-600 hover:bg-orange-50'
                       }`}>
-                        {status === 'done' ? 'Trocar' : status === 'uploading' ? '...' : 'Escolher'}
+                        {file ? 'Trocar' : 'Escolher'}
                         <input
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.webp"
                           className="hidden"
-                          disabled={status === 'uploading'}
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            setUploads((prev) => ({ ...prev, [type]: 'uploading' }));
-                            setError('');
-                            try {
-                              const fd = new FormData();
-                              fd.append('file', file);
-                              const res = await fetch(`${API_BASE}/documents/pending/${userId}?type=${type}`, {
-                                method: 'POST', body: fd,
-                              });
-                              if (!res.ok) {
-                                const b = await res.json().catch(() => ({})) as { message?: string };
-                                throw new Error(b.message ?? 'Erro ao enviar');
-                              }
-                              setUploads((prev) => ({ ...prev, [type]: 'done' }));
-                            } catch (err) {
-                              setUploads((prev) => ({ ...prev, [type]: 'error' }));
-                              setError(err instanceof Error ? err.message : 'Erro ao enviar documento');
-                            }
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] ?? null;
+                            setSelectedFiles((prev) => ({ ...prev, [type]: f }));
                             e.target.value = '';
                           }}
                         />
@@ -337,13 +332,16 @@ export default function CadastroEntregadorPage() {
                 })}
               </div>
               <button
-                onClick={() => router.push('/cadastro-entregador/pendente')}
-                disabled={!allRequiredUploaded}
+                onClick={handleConcluir}
+                disabled={!allRequiredSelected || submitting}
                 className="w-full mt-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
                 style={{ backgroundColor: '#E8622C' }}
               >
-                Concluir cadastro
+                {submitting ? 'Finalizando cadastro...' : 'Concluir cadastro'}
               </button>
+              {!allRequiredSelected && (
+                <p className="text-center text-xs text-gray-400 mt-2">Selecione todos os documentos obrigatórios para continuar</p>
+              )}
             </div>
           )}
         </div>

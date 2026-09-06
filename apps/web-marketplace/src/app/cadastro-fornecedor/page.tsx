@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
-type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
 
 interface FormData {
   supplierType: 'SUPPLIER_STORE' | 'SUPPLIER_FACTORY';
@@ -27,8 +26,8 @@ const STEPS = ['Tipo', 'Empresa', 'Contato', 'Endereço', 'Acesso', 'Documentos'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 const DOC_CONFIG = [
-  { type: 'CONTRATO_SOCIAL',   label: 'Contrato Social',    required: true },
-  { type: 'CNPJ',              label: 'Cartão CNPJ',         required: true },
+  { type: 'CONTRATO_SOCIAL',    label: 'Contrato Social',    required: true },
+  { type: 'CNPJ',               label: 'Cartão CNPJ',        required: true },
   { type: 'INSCRICAO_ESTADUAL', label: 'Inscrição Estadual', required: false },
 ] as const;
 
@@ -55,11 +54,10 @@ export default function CadastroFornecedorPage() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(INITIAL);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [fetchingCep, setFetchingCep] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [uploads, setUploads] = useState<Record<DocType, UploadStatus>>({
-    CONTRATO_SOCIAL: 'idle', CNPJ: 'idle', INSCRICAO_ESTADUAL: 'idle',
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<Record<DocType, File | null>>({
+    CONTRATO_SOCIAL: null, CNPJ: null, INSCRICAO_ESTADUAL: null,
   });
 
   function set<K extends keyof FormData>(field: K, value: FormData[K]) {
@@ -110,12 +108,17 @@ export default function CadastroFornecedorPage() {
     setStep((s) => (s < 6 ? (s + 1) as Step : s));
   }
 
-  async function handleRegister(e: FormEvent) {
+  function handlePasswordNext(e: FormEvent) {
     e.preventDefault();
     setError('');
     if (form.password.length < 8) { setError('Senha deve ter ao menos 8 caracteres'); return; }
     if (form.password !== form.confirmPassword) { setError('As senhas não coincidem'); return; }
-    setLoading(true);
+    setStep(6);
+  }
+
+  async function handleConcluir() {
+    setError('');
+    setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/suppliers/register`, {
         method: 'POST',
@@ -138,13 +141,32 @@ export default function CadastroFornecedorPage() {
       });
       const body = await res.json() as { success?: boolean; data?: { userId?: string }; message?: string };
       if (!res.ok) { setError(body?.message ?? 'Erro ao criar conta'); return; }
-      setUserId(body.data?.userId ?? null);
-      setStep(6);
-    } catch { setError('Erro de conexão. Tente novamente.'); }
-    finally { setLoading(false); }
+      const userId = body.data?.userId;
+      if (!userId) { setError('Erro inesperado ao criar conta. Tente novamente.'); return; }
+
+      for (const { type } of DOC_CONFIG) {
+        const file = selectedFiles[type];
+        if (!file) continue;
+        const fd = new FormData();
+        fd.append('file', file);
+        const docRes = await fetch(`${API_BASE}/documents/pending/${userId}?type=${type}`, {
+          method: 'POST', body: fd,
+        });
+        if (!docRes.ok) {
+          const b = await docRes.json().catch(() => ({})) as { message?: string };
+          throw new Error(b.message ?? 'Erro ao enviar documento');
+        }
+      }
+
+      router.push('/cadastro-fornecedor/pendente');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  const allRequiredUploaded = DOC_CONFIG.filter((d) => d.required).every((d) => uploads[d.type] === 'done');
+  const allRequiredSelected = DOC_CONFIG.filter((d) => d.required).every((d) => selectedFiles[d.type] !== null);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
@@ -215,7 +237,7 @@ export default function CadastroFornecedorPage() {
                     </button>
                   ))}
                 </div>
-                <button onClick={nextStep} className={`w-full mt-6 ${btnNext}`} style={{ backgroundColor: '#E8622C' }}>
+                <button type="button" onClick={nextStep} className={`w-full mt-6 ${btnNext}`} style={{ backgroundColor: '#E8622C' }}>
                   Continuar →
                 </button>
               </div>
@@ -236,8 +258,8 @@ export default function CadastroFornecedorPage() {
                     <input value={form.stateRegistration} onChange={(e) => set('stateRegistration', e.target.value)} className={inputCls} placeholder="Opcional" /></div>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setStep(1)} className={btnBack}>← Voltar</button>
-                  <button onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
+                  <button type="button" onClick={() => setStep(1)} className={btnBack}>← Voltar</button>
+                  <button type="button" onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
                 </div>
               </div>
             )}
@@ -253,8 +275,8 @@ export default function CadastroFornecedorPage() {
                     <input value={form.phone} onChange={(e) => set('phone', maskPhone(e.target.value))} className={inputCls} placeholder="(11) 99999-9999" /></div>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setStep(2)} className={btnBack}>← Voltar</button>
-                  <button onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
+                  <button type="button" onClick={() => setStep(2)} className={btnBack}>← Voltar</button>
+                  <button type="button" onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
                 </div>
               </div>
             )}
@@ -288,15 +310,15 @@ export default function CadastroFornecedorPage() {
                   </div>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setStep(3)} className={btnBack}>← Voltar</button>
-                  <button onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
+                  <button type="button" onClick={() => setStep(3)} className={btnBack}>← Voltar</button>
+                  <button type="button" onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
                 </div>
               </div>
             )}
 
             {/* Step 5 — Acesso */}
             {step === 5 && (
-              <form onSubmit={handleRegister}>
+              <form onSubmit={handlePasswordNext}>
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Dados de acesso</h2>
                 <p className="text-sm text-gray-500 mb-5">Crie a senha para o painel do fornecedor</p>
                 <div className="space-y-4">
@@ -313,28 +335,23 @@ export default function CadastroFornecedorPage() {
                 </div>
                 <div className="flex gap-3 mt-6">
                   <button type="button" onClick={() => setStep(4)} className={btnBack}>← Voltar</button>
-                  <button type="submit" disabled={loading} className={`${btnNext} disabled:opacity-50`} style={{ backgroundColor: '#E8622C' }}>
-                    {loading ? 'Processando...' : 'Continuar →'}
+                  <button type="submit" className={`${btnNext}`} style={{ backgroundColor: '#E8622C' }}>
+                    Continuar →
                   </button>
                 </div>
               </form>
             )}
 
             {/* Step 6 — Documentos */}
-            {step === 6 && !userId && (
-              <p className="text-sm text-red-600 text-center py-4">
-                Erro ao obter dados do cadastro. Por favor, tente novamente.
-              </p>
-            )}
-            {step === 6 && userId && (
+            {step === 6 && (
               <div>
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Documentos</h2>
                 <p className="text-xs text-gray-400 mb-4">
-                  Envie os documentos para análise. Formatos aceitos: PDF, JPG, PNG — máx. 10 MB cada.
+                  Selecione os arquivos. O cadastro será criado ao clicar em Concluir. Formatos: PDF, JPG, PNG — máx. 10 MB cada.
                 </p>
                 <div className="space-y-3">
                   {DOC_CONFIG.map(({ type, label, required }) => {
-                    const status = uploads[type];
+                    const file = selectedFiles[type];
                     return (
                       <div key={type} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
                         <div>
@@ -342,41 +359,21 @@ export default function CadastroFornecedorPage() {
                             {label}{required && <span className="text-red-400 ml-0.5">*</span>}
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            {status === 'done' ? '✓ Enviado'
-                              : status === 'error' ? '✗ Erro — tente novamente'
-                              : status === 'uploading' ? 'Enviando...'
-                              : required ? 'Obrigatório' : 'Opcional'}
+                            {file ? `✓ ${file.name}` : required ? 'Obrigatório' : 'Opcional'}
                           </p>
                         </div>
                         <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                          status === 'done' ? 'border-green-200 text-green-700 bg-green-50'
-                            : status === 'uploading' ? 'border-gray-200 text-gray-400 pointer-events-none'
-                            : 'border-orange-200 text-orange-600 hover:bg-orange-50'
+                          file ? 'border-green-200 text-green-700 bg-green-50' : 'border-orange-200 text-orange-600 hover:bg-orange-50'
                         }`}>
-                          {status === 'done' ? 'Trocar' : status === 'uploading' ? '...' : 'Escolher'}
-                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
-                            disabled={status === 'uploading'}
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              setUploads((prev) => ({ ...prev, [type]: 'uploading' }));
-                              setError('');
-                              try {
-                                const fd = new FormData();
-                                fd.append('file', file);
-                                const res = await fetch(
-                                  `${API_BASE}/documents/pending/${userId}?type=${type}`,
-                                  { method: 'POST', body: fd },
-                                );
-                                if (!res.ok) {
-                                  const b = await res.json().catch(() => ({})) as { message?: string };
-                                  throw new Error(b.message ?? 'Erro ao enviar');
-                                }
-                                setUploads((prev) => ({ ...prev, [type]: 'done' }));
-                              } catch (err) {
-                                setUploads((prev) => ({ ...prev, [type]: 'error' }));
-                                setError(err instanceof Error ? err.message : 'Erro ao enviar documento');
-                              }
+                          {file ? 'Trocar' : 'Escolher'}
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              setSelectedFiles((prev) => ({ ...prev, [type]: f }));
                               e.target.value = '';
                             }}
                           />
@@ -385,17 +382,19 @@ export default function CadastroFornecedorPage() {
                     );
                   })}
                 </div>
+                <p className="text-xs text-gray-400 mt-3">* Obrigatórios. Você pode enviar a Inscrição Estadual depois.</p>
                 <button
-                  onClick={() => router.push('/cadastro-fornecedor/pendente')}
-                  disabled={!allRequiredUploaded}
-                  className={`w-full mt-5 ${btnNext} disabled:opacity-50`}
+                  type="button"
+                  onClick={handleConcluir}
+                  disabled={!allRequiredSelected || submitting}
+                  className={`w-full mt-5 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50`}
                   style={{ backgroundColor: '#E8622C' }}
                 >
-                  Concluir cadastro
+                  {submitting ? 'Finalizando cadastro...' : 'Concluir cadastro'}
                 </button>
-                {!allRequiredUploaded && (
+                {!allRequiredSelected && !submitting && (
                   <p className="text-center text-xs text-gray-400 mt-2">
-                    Envie todos os documentos obrigatórios para continuar
+                    Selecione todos os documentos obrigatórios para continuar
                   </p>
                 )}
               </div>
