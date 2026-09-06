@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 interface UserItem {
   id: string;
@@ -66,11 +66,18 @@ export default function UsuariosPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [search, setSearch] = useState('');
   const [suspending, setSuspending] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     api.get<UserList>('/users?limit=100')
       .then(setList)
-      .catch(() => router.push('/login'))
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 401) {
+          router.push('/login');
+        } else {
+          setError('Erro ao carregar usuários. Recarregue a página.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -103,6 +110,14 @@ export default function UsuariosPage() {
     return (
       <div className="p-8 flex items-center justify-center h-64">
         <p className="text-gray-400 text-sm">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 flex items-center justify-center h-64">
+        <p className="text-red-500 text-sm">{error}</p>
       </div>
     );
   }

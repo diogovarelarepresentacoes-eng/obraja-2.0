@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 interface ContractorItem {
   id: string;
@@ -45,11 +45,18 @@ export default function ConstrutoresPage() {
   const [list, setList] = useState<ContractorList | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     api.get<ContractorList>('/contractors?limit=50')
       .then(setList)
-      .catch(() => router.push('/login'))
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 401) {
+          router.push('/login');
+        } else {
+          setError('Erro ao carregar construtoras. Recarregue a página.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -57,6 +64,14 @@ export default function ConstrutoresPage() {
     return (
       <div className="p-8 flex items-center justify-center h-64">
         <p className="text-gray-400 text-sm">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 flex items-center justify-center h-64">
+        <p className="text-red-500 text-sm">{error}</p>
       </div>
     );
   }

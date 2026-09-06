@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 interface DriverItem {
   id: string;
@@ -53,11 +53,18 @@ export default function EntregadoresPage() {
   const [list, setList] = useState<DriverList | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     api.get<DriverList>('/drivers?limit=50')
       .then(setList)
-      .catch(() => router.push('/login'))
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 401) {
+          router.push('/login');
+        } else {
+          setError('Erro ao carregar entregadores. Recarregue a página.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -65,6 +72,14 @@ export default function EntregadoresPage() {
     return (
       <div className="p-8 flex items-center justify-center h-64">
         <p className="text-gray-400 text-sm">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 flex items-center justify-center h-64">
+        <p className="text-red-500 text-sm">{error}</p>
       </div>
     );
   }
