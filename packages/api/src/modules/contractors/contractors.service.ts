@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
@@ -36,7 +37,7 @@ export class ContractorsService {
 
   async register(dto: RegisterContractorDto) {
     if (!isValidCnpj(dto.cnpj)) {
-      throw new ConflictException('CNPJ inválido');
+      throw new BadRequestException('CNPJ inválido');
     }
 
     const cnpj = cleanCnpj(dto.cnpj);

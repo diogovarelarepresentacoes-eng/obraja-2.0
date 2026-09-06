@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   NotFoundException,
   ForbiddenException,
@@ -38,7 +39,7 @@ export class SuppliersService {
 
   async register(dto: RegisterSupplierDto) {
     if (!isValidCnpj(dto.cnpj)) {
-      throw new ConflictException('CNPJ inválido');
+      throw new BadRequestException('CNPJ inválido');
     }
 
     const cnpj = cleanCnpj(dto.cnpj);

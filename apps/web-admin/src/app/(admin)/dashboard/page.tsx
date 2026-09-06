@@ -22,7 +22,7 @@ const STAT_CARDS = (stats: Stats) => [
     href: '/aprovacoes',
   },
   {
-    label: 'Fornecedores Aprovados',
+    label: 'Cadastros Aprovados',
     value: stats.approved,
     color: '#16A34A',
     bg: '#F0FDF4',

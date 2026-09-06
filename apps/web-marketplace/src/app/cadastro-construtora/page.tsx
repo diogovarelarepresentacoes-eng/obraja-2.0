@@ -49,7 +49,7 @@ const labelCls = 'block text-xs font-medium text-gray-600 mb-1.5';
 const btnBack = 'flex-1 py-3 rounded-xl text-sm border border-gray-200 text-gray-600 hover:bg-gray-50';
 const btnNext = 'flex-1 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity';
 
-export default function CadastroConstutoraPage() {
+export default function CadastroConstrutorPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(INITIAL);
@@ -277,6 +277,11 @@ export default function CadastroConstutoraPage() {
             )}
 
             {/* Step 4 — Documentos */}
+            {step === 4 && !userId && (
+              <p className="text-sm text-red-600 text-center py-4">
+                Erro ao obter dados do cadastro. Por favor, tente novamente.
+              </p>
+            )}
             {step === 4 && userId && (
               <div>
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Documentos</h2>

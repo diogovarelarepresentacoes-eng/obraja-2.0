@@ -29,6 +29,7 @@ interface UserDetail {
   driverProfile?: {
     firstName: string; lastName: string; cpf: string; vehicleType: string;
     vehiclePlate: string; vehicleBrand: string; vehicleModel: string;
+    vehicleYear?: number; vehicleColor?: string;
   };
   documents: { id: string; type: string; fileUrl: string; status: string }[];
 }
@@ -113,7 +114,7 @@ export default function AprovacaoDetailPage({ params }: { params: Promise<{ id: 
       </button>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        {profile?.companyName ?? `${user.driverProfile?.firstName} ${user.driverProfile?.lastName}`}
+        {profile?.companyName ?? (user.driverProfile ? `${user.driverProfile.firstName} ${user.driverProfile.lastName}` : '—')}
       </h1>
 
       {feedback && (
@@ -171,6 +172,8 @@ export default function AprovacaoDetailPage({ params }: { params: Promise<{ id: 
             <div><p className="text-gray-400 text-xs">Placa</p><p className="font-medium">{user.driverProfile.vehiclePlate}</p></div>
             <div><p className="text-gray-400 text-xs">Marca</p><p className="font-medium">{user.driverProfile.vehicleBrand}</p></div>
             <div><p className="text-gray-400 text-xs">Modelo</p><p className="font-medium">{user.driverProfile.vehicleModel}</p></div>
+            {user.driverProfile.vehicleYear && <div><p className="text-gray-400 text-xs">Ano</p><p className="font-medium">{user.driverProfile.vehicleYear}</p></div>}
+            {user.driverProfile.vehicleColor && <div><p className="text-gray-400 text-xs">Cor</p><p className="font-medium">{user.driverProfile.vehicleColor}</p></div>}
           </div>
         </div>
       )}
@@ -222,24 +225,30 @@ export default function AprovacaoDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       {/* Ações */}
-      <div className="flex gap-3 mt-6">
-        <button
-          onClick={handleApprove}
-          disabled={!!action}
-          className="flex-1 py-3 rounded-xl font-semibold text-white text-sm transition-opacity disabled:opacity-60"
-          style={{ backgroundColor: '#16A34A' }}
-        >
-          {action === 'approving' ? 'Aprovando...' : '✅ Aprovar cadastro'}
-        </button>
+      {user.status === 'PENDING_REVIEW' ? (
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={handleApprove}
+            disabled={!!action}
+            className="flex-1 py-3 rounded-xl font-semibold text-white text-sm transition-opacity disabled:opacity-60"
+            style={{ backgroundColor: '#16A34A' }}
+          >
+            {action === 'approving' ? 'Aprovando...' : '✅ Aprovar cadastro'}
+          </button>
 
-        <button
-          onClick={() => setShowRejectModal(true)}
-          disabled={!!action}
-          className="flex-1 py-3 rounded-xl font-semibold text-sm border-2 border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
-        >
-          ❌ Reprovar cadastro
-        </button>
-      </div>
+          <button
+            onClick={() => setShowRejectModal(true)}
+            disabled={!!action}
+            className="flex-1 py-3 rounded-xl font-semibold text-sm border-2 border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
+          >
+            ❌ Reprovar cadastro
+          </button>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-xl px-4 py-3 bg-gray-50 border border-gray-200 text-sm text-gray-600 text-center">
+          Cadastro já processado — status: <strong>{user.status}</strong>
+        </div>
+      )}
 
       {/* Modal de rejeição */}
       {showRejectModal && (

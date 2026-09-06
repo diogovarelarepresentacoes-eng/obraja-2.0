@@ -321,6 +321,11 @@ export default function CadastroFornecedorPage() {
             )}
 
             {/* Step 6 — Documentos */}
+            {step === 6 && !userId && (
+              <p className="text-sm text-red-600 text-center py-4">
+                Erro ao obter dados do cadastro. Por favor, tente novamente.
+              </p>
+            )}
             {step === 6 && userId && (
               <div>
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Documentos</h2>

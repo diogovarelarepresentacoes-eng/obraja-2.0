@@ -3,7 +3,6 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
@@ -99,6 +98,10 @@ export default function CadastroPage() {
         setError('Preencha todos os campos obrigatórios');
         return;
       }
+      if (form.cnpj.replace(/\D/g, '').length !== 14) {
+        setError('CNPJ deve ter 14 dígitos');
+        return;
+      }
     }
     if (step === 3) {
       if (!form.cep || !form.street || !form.number || !form.city) {
@@ -124,26 +127,32 @@ export default function CadastroPage() {
 
     setLoading(true);
     try {
-      const result = await api.post<{ userId: string }>('/suppliers/register', {
-        email: form.email,
-        password: form.password,
-        phone: form.phone,
-        companyName: form.companyName,
-        tradeName: form.tradeName || undefined,
-        cnpj: form.cnpj,
-        ie: form.ie || undefined,
-        role: form.role,
-        address: {
-          cep: form.cep,
-          street: form.street,
-          number: form.number,
-          complement: form.complement || undefined,
-          neighborhood: form.neighborhood,
-          city: form.city,
-          state: form.state,
-        },
+      const res = await fetch(`${API_BASE}/suppliers/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+          phone: form.phone,
+          companyName: form.companyName,
+          tradeName: form.tradeName || undefined,
+          cnpj: form.cnpj,
+          ie: form.ie || undefined,
+          role: form.role,
+          address: {
+            cep: form.cep,
+            street: form.street,
+            number: form.number,
+            complement: form.complement || undefined,
+            neighborhood: form.neighborhood,
+            city: form.city,
+            state: form.state,
+          },
+        }),
       });
-      setUserId(result.userId);
+      const body = await res.json() as { userId?: string; message?: string };
+      if (!res.ok) throw new Error(body.message ?? 'Erro ao cadastrar');
+      setUserId(body.userId ?? null);
       setStep(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao cadastrar');
@@ -380,6 +389,11 @@ export default function CadastroPage() {
           )}
 
           {/* Etapa 5 — Documentos */}
+          {step === 5 && !userId && (
+            <p className="text-sm text-red-600 text-center py-4">
+              Erro ao obter dados do cadastro. Por favor, tente novamente.
+            </p>
+          )}
           {step === 5 && userId && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Documentos</h2>

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewApprovalDto, ApproveDto } from './dto/review-approval.dto';
 import { UserStatus, UserRole } from '@obraja/types';
@@ -59,6 +59,9 @@ export class ApprovalsService {
     });
 
     if (!user) throw new NotFoundException('Usuário não encontrado');
+    if (user.status !== UserStatus.PENDING_REVIEW) {
+      throw new BadRequestException('Cadastro não está em análise');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
@@ -99,6 +102,9 @@ export class ApprovalsService {
   async reject(userId: string, dto: ReviewApprovalDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuário não encontrado');
+    if (user.status !== UserStatus.PENDING_REVIEW) {
+      throw new BadRequestException('Cadastro não está em análise');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({

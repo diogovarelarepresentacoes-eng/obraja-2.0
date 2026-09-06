@@ -71,7 +71,7 @@ export default function CadastroEntregadorPage() {
     if (s === 1) {
       if (!form.firstName || !form.lastName) return 'Nome obrigatório';
       if (form.cpf.replace(/\D/g, '').length !== 11) return 'CPF inválido';
-      if (!form.email) return 'E-mail obrigatório';
+      if (!form.email || !form.email.includes('@')) return 'E-mail inválido';
       if (!form.phone) return 'Telefone obrigatório';
     }
     if (s === 2) {
@@ -106,7 +106,7 @@ export default function CadastroEntregadorPage() {
         body: JSON.stringify({
           firstName: form.firstName,
           lastName: form.lastName,
-          cpf: form.cpf,
+          cpf: form.cpf.replace(/\D/g, ''),
           email: form.email,
           phone: form.phone,
           password: form.password,
@@ -275,6 +275,11 @@ export default function CadastroEntregadorPage() {
           )}
 
           {/* Step 4 — Documentos */}
+          {step === 4 && !userId && (
+            <p className="text-sm text-red-600 text-center py-4">
+              Erro ao obter dados do cadastro. Por favor, tente novamente.
+            </p>
+          )}
           {step === 4 && userId && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Documentos</h2>

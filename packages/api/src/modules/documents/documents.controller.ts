@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Param,
+  ParseUUIDPipe,
   Query,
   UploadedFile,
   UseInterceptors,
@@ -35,7 +36,7 @@ export class DocumentsController {
     FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }),
   )
   upload(
-    @Param('userId') userId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @Query('type') type: string,
     @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number; originalname: string },
   ) {
