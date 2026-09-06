@@ -172,7 +172,7 @@ export default function CadastroPage() {
           throw new Error(b.message ?? 'Erro ao enviar documento');
         }
       }
-      router.push('/pendente');
+      router.push(`/pendente?uid=${userId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
     } finally {

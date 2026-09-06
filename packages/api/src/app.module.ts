@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { ApprovedGuard } from './common/guards/approved.guard';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -18,6 +19,7 @@ import { DeliveryModule } from './modules/delivery/delivery.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { ContractorsModule } from './modules/contractors/contractors.module';
 import { DriversModule } from './modules/drivers/drivers.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -52,9 +54,11 @@ import { DriversModule } from './modules/drivers/drivers.module';
     DocumentsModule,
     ContractorsModule,
     DriversModule,
+    MailModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: ApprovedGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

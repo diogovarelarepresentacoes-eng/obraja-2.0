@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api, setSupplierToken } from '@/lib/api';
 
 export default function SupplierLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justApproved = searchParams.get('approved') === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -40,6 +42,13 @@ export default function SupplierLoginPage() {
           <h1 className="text-2xl font-bold" style={{ color: '#F05A28' }}>ObraJá</h1>
           <p className="text-sm text-gray-500 mt-1">Painel do Fornecedor</p>
         </div>
+
+        {justApproved && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 text-center">
+            <p className="text-sm font-semibold text-green-800">🎉 Cadastro aprovado!</p>
+            <p className="text-xs text-green-700 mt-0.5">Faça login para acessar seu painel.</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

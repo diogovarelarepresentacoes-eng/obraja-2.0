@@ -1,11 +1,15 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { ReviewApprovalDto, ApproveDto } from './dto/review-approval.dto';
 import { UserStatus, UserRole } from '@obraja/types';
 
 @Injectable()
 export class ApprovalsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mail: MailService,
+  ) {}
 
   async findPending(page: number, limit: number) {
     const skip = (page - 1) * limit;
@@ -51,10 +55,11 @@ export class ApprovalsService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
+        email: true,
         role: true,
         status: true,
-        contractorProfile: { select: { id: true } },
-        supplierProfile: { select: { id: true } },
+        contractorProfile: { select: { id: true, companyName: true } },
+        supplierProfile: { select: { id: true, companyName: true } },
       },
     });
 
@@ -96,11 +101,23 @@ export class ApprovalsService {
       });
     });
 
+    const companyName =
+      user.supplierProfile?.companyName ??
+      user.contractorProfile?.companyName ??
+      user.email;
+    void this.mail.sendApprovalEmail(user.email, companyName);
+
     return { message: 'Cadastro aprovado com sucesso' };
   }
 
   async reject(userId: string, dto: ReviewApprovalDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        supplierProfile: { select: { companyName: true } },
+        contractorProfile: { select: { companyName: true } },
+      },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
     if (user.status !== UserStatus.PENDING_REVIEW) {
       throw new BadRequestException('Cadastro não está em análise');
@@ -118,7 +135,22 @@ export class ApprovalsService {
       });
     });
 
+    const companyName =
+      (user as any).supplierProfile?.companyName ??
+      (user as any).contractorProfile?.companyName ??
+      user.email;
+    void this.mail.sendRejectionEmail(user.email, companyName, dto.reason);
+
     return { message: 'Cadastro reprovado' };
+  }
+
+  async checkStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    return { status: user.status };
   }
 
   async stats() {

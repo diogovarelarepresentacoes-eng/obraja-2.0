@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { ApprovalsService } from './approvals.service';
 import { ReviewApprovalDto, ApproveDto } from './dto/review-approval.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '@obraja/types';
 
 @ApiTags('Approvals')
@@ -24,6 +25,13 @@ export class ApprovalsController {
   @ApiOperation({ summary: 'Estatísticas do painel admin' })
   stats() {
     return this.approvalsService.stats();
+  }
+
+  @Public()
+  @Get('check/:userId')
+  @ApiOperation({ summary: 'Verificar status de cadastro (público — polling pela página /pendente)' })
+  checkStatus(@Param('userId') userId: string) {
+    return this.approvalsService.checkStatus(userId);
   }
 
   @Get(':userId')

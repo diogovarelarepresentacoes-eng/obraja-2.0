@@ -53,6 +53,7 @@ export class ProductsService {
     const where = {
       status: 'ACTIVE' as const,
       deletedAt: null,
+      supplier: { user: { status: 'APPROVED' as const } },
       ...(search && { name: { contains: search, mode: 'insensitive' as const } }),
       ...(categoryId && { categoryId }),
       ...(supplierId && { supplierId }),

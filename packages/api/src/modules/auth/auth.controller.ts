@@ -16,6 +16,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { SkipApprovalCheck } from '../../common/decorators/skip-approval.decorator';
 import { JwtPayload } from '@obraja/types';
 
 const REFRESH_COOKIE_OPTIONS = {
@@ -73,6 +74,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
+  @SkipApprovalCheck()
   @ApiOperation({ summary: 'Fazer logout' })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = req.user as { id: string };
@@ -82,6 +84,7 @@ export class AuthController {
 
   @Get('me')
   @ApiBearerAuth()
+  @SkipApprovalCheck()
   @ApiOperation({ summary: 'Dados do usuário autenticado' })
   async me(@Req() req: Request) {
     const user = req.user as { id: string };
