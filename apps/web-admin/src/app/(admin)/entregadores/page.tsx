@@ -4,29 +4,42 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
-interface SupplierItem {
+interface DriverItem {
   id: string;
   userId: string;
-  companyName: string;
-  tradeName?: string;
-  cnpj: string;
-  phone: string;
-  commissionRate: number;
-  isVerified: boolean;
-  user: { email: string; status: string; createdAt: string };
-  address?: { city: string; state: string };
+  firstName: string;
+  lastName: string;
+  cpf: string;
+  vehicleType: string;
+  vehiclePlate: string;
+  vehicleBrand: string;
+  vehicleModel: string;
+  vehicleYear: number;
+  vehicleColor: string;
+  isOnline: boolean;
+  rating: number;
+  totalDeliveries: number;
+  user: { email: string; status: string };
 }
 
-interface SupplierList {
-  data: SupplierItem[];
+interface DriverList {
+  data: DriverItem[];
   total: number;
 }
 
-function formatCnpj(cnpj: string): string {
-  const digits = cnpj.replace(/\D/g, '');
-  if (digits.length !== 14) return cnpj;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+function formatCpf(cpf: string): string {
+  const digits = cpf.replace(/\D/g, '');
+  if (digits.length !== 11) return cpf;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
+
+const VEHICLE_LABEL: Record<string, string> = {
+  MOTO: 'Moto',
+  CARRO: 'Carro',
+  VAN: 'Van',
+  CAMINHONETE: 'Caminhonete',
+  CAMINHAO: 'Caminhão',
+};
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   APPROVED: { label: 'Aprovado', className: 'bg-green-50 text-green-700' },
@@ -35,14 +48,14 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   SUSPENDED: { label: 'Suspenso', className: 'bg-gray-100 text-gray-500' },
 };
 
-export default function FornecedoresPage() {
+export default function EntregadoresPage() {
   const router = useRouter();
-  const [list, setList] = useState<SupplierList | null>(null);
+  const [list, setList] = useState<DriverList | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.get<SupplierList>('/suppliers?limit=50')
+    api.get<DriverList>('/drivers?limit=50')
       .then(setList)
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false));
@@ -56,16 +69,16 @@ export default function FornecedoresPage() {
     );
   }
 
-  const allSuppliers = list?.data ?? [];
-
+  const all = list?.data ?? [];
   const filtered = search.trim() === ''
-    ? allSuppliers
-    : allSuppliers.filter((s) => {
+    ? all
+    : all.filter((d) => {
         const q = search.toLowerCase();
+        const name = `${d.firstName} ${d.lastName}`.toLowerCase();
         return (
-          s.companyName.toLowerCase().includes(q) ||
-          (s.tradeName ?? '').toLowerCase().includes(q) ||
-          s.cnpj.replace(/\D/g, '').includes(q.replace(/\D/g, ''))
+          name.includes(q) ||
+          d.cpf.replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
+          d.vehiclePlate.toLowerCase().includes(q)
         );
       });
 
@@ -73,18 +86,17 @@ export default function FornecedoresPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fornecedores</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Entregadores</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {list?.total ?? 0} fornecedor{(list?.total ?? 0) !== 1 ? 'es' : ''} cadastrado{(list?.total ?? 0) !== 1 ? 's' : ''}
+            {list?.total ?? 0} entregador{(list?.total ?? 0) !== 1 ? 'es' : ''} cadastrado{(list?.total ?? 0) !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
 
-      {/* Search */}
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Buscar por empresa, nome fantasia ou CNPJ…"
+          placeholder="Buscar por nome, CPF ou placa…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-transparent"
@@ -93,9 +105,9 @@ export default function FornecedoresPage() {
 
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <p className="text-5xl mb-3">🏪</p>
+          <p className="text-5xl mb-3">🛵</p>
           <p className="font-semibold text-gray-700">
-            {search ? 'Nenhum fornecedor encontrado' : 'Nenhum fornecedor cadastrado'}
+            {search ? 'Nenhum entregador encontrado' : 'Nenhum entregador cadastrado'}
           </p>
           <p className="text-sm text-gray-400 mt-1">
             {search ? 'Tente uma busca diferente' : 'Aguardando o primeiro cadastro'}
@@ -106,41 +118,45 @@ export default function FornecedoresPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Empresa</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">CNPJ</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Cidade/UF</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Comissão</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600">Entregador</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600">CPF</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600">Veículo</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600">Placa</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600">Entregas</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600">Nota</th>
                 <th className="text-left px-5 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Verificado</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Cadastro</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((supplier) => {
-                const statusInfo = STATUS_BADGE[supplier.user.status] ?? {
-                  label: supplier.user.status,
+              {filtered.map((driver) => {
+                const statusInfo = STATUS_BADGE[driver.user.status] ?? {
+                  label: driver.user.status,
                   className: 'bg-gray-100 text-gray-500',
                 };
-                const isPending = supplier.user.status === 'PENDING_REVIEW';
-                const location = supplier.address
-                  ? `${supplier.address.city} / ${supplier.address.state}`
-                  : '—';
+                const isPending = driver.user.status === 'PENDING_REVIEW';
 
                 return (
-                  <tr key={supplier.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={driver.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3.5">
-                      <p className="font-medium text-gray-900">{supplier.companyName}</p>
-                      {supplier.tradeName && (
-                        <p className="text-xs text-gray-400 mt-0.5">{supplier.tradeName}</p>
-                      )}
+                      <p className="font-medium text-gray-900">{driver.firstName} {driver.lastName}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{driver.user.email}</p>
                     </td>
                     <td className="px-5 py-3.5 text-gray-600 font-mono text-xs">
-                      {formatCnpj(supplier.cnpj)}
+                      {formatCpf(driver.cpf)}
                     </td>
-                    <td className="px-5 py-3.5 text-gray-600">{location}</td>
+                    <td className="px-5 py-3.5 text-gray-600">
+                      <span>{VEHICLE_LABEL[driver.vehicleType] ?? driver.vehicleType}</span>
+                      <span className="text-xs text-gray-400 ml-1">{driver.vehicleBrand} {driver.vehicleModel} {driver.vehicleYear}</span>
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-xs text-gray-700">
+                      {driver.vehiclePlate}
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-600 text-center">
+                      {driver.totalDeliveries}
+                    </td>
                     <td className="px-5 py-3.5 text-gray-700">
-                      {supplier.commissionRate.toFixed(1)}%
+                      ⭐ {driver.rating.toFixed(1)}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.className}`}>
@@ -148,19 +164,9 @@ export default function FornecedoresPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      {supplier.isVerified ? (
-                        <span className="text-green-600 font-semibold" title="Verificado">✓</span>
-                      ) : (
-                        <span className="text-gray-300 font-semibold" title="Não verificado">✗</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-500 text-xs">
-                      {new Date(supplier.user.createdAt).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="px-5 py-3.5">
                       {isPending ? (
                         <button
-                          onClick={() => router.push(`/aprovacoes/${supplier.userId}`)}
+                          onClick={() => router.push(`/aprovacoes/${driver.userId}`)}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
                           style={{ backgroundColor: '#F05A28' }}
                         >

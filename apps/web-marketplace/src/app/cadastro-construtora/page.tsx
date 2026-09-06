@@ -4,31 +4,30 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4;
 type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
 
 interface FormData {
-  supplierType: 'SUPPLIER_STORE' | 'SUPPLIER_FACTORY';
-  companyName: string; tradeName: string; cnpj: string; stateRegistration: string;
+  companyName: string; cnpj: string; ie: string;
   email: string; phone: string;
-  cep: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string;
+  cep: string; street: string; number: string; complement: string;
+  neighborhood: string; city: string; state: string;
   password: string; confirmPassword: string;
 }
 
 const INITIAL: FormData = {
-  supplierType: 'SUPPLIER_STORE',
-  companyName: '', tradeName: '', cnpj: '', stateRegistration: '',
+  companyName: '', cnpj: '', ie: '',
   email: '', phone: '',
   cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '',
   password: '', confirmPassword: '',
 };
 
-const STEPS = ['Tipo', 'Empresa', 'Contato', 'Endereço', 'Acesso', 'Documentos'];
+const STEPS = ['Empresa', 'Endereço', 'Acesso', 'Documentos'];
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 const DOC_CONFIG = [
-  { type: 'CONTRATO_SOCIAL',   label: 'Contrato Social',    required: true },
-  { type: 'CNPJ',              label: 'Cartão CNPJ',         required: true },
+  { type: 'CONTRATO_SOCIAL',    label: 'Contrato Social',    required: true },
+  { type: 'CNPJ',               label: 'Cartão CNPJ',        required: true },
   { type: 'INSCRICAO_ESTADUAL', label: 'Inscrição Estadual', required: false },
 ] as const;
 
@@ -50,7 +49,7 @@ const labelCls = 'block text-xs font-medium text-gray-600 mb-1.5';
 const btnBack = 'flex-1 py-3 rounded-xl text-sm border border-gray-200 text-gray-600 hover:bg-gray-50';
 const btnNext = 'flex-1 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity';
 
-export default function CadastroFornecedorPage() {
+export default function CadastroConstutoraPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(INITIAL);
@@ -86,15 +85,13 @@ export default function CadastroFornecedorPage() {
   }
 
   function validate(s: Step): string | null {
-    if (s === 2) {
+    if (s === 1) {
       if (!form.companyName.trim()) return 'Razão social obrigatória';
       if (form.cnpj.replace(/\D/g, '').length !== 14) return 'CNPJ inválido (14 dígitos)';
-    }
-    if (s === 3) {
-      if (!form.email.trim() || !form.email.includes('@')) return 'E-mail inválido';
       if (!form.phone.trim()) return 'Telefone obrigatório';
+      if (!form.email.trim() || !form.email.includes('@')) return 'E-mail inválido';
     }
-    if (s === 4) {
+    if (s === 2) {
       if (form.cep.replace(/\D/g, '').length !== 8) return 'CEP inválido';
       if (!form.street.trim()) return 'Rua obrigatória';
       if (!form.number.trim()) return 'Número obrigatório';
@@ -107,7 +104,7 @@ export default function CadastroFornecedorPage() {
     setError('');
     const msg = validate(step);
     if (msg) { setError(msg); return; }
-    setStep((s) => (s < 6 ? (s + 1) as Step : s));
+    setStep((s) => (s < 4 ? (s + 1) as Step : s));
   }
 
   async function handleRegister(e: FormEvent) {
@@ -117,29 +114,31 @@ export default function CadastroFornecedorPage() {
     if (form.password !== form.confirmPassword) { setError('As senhas não coincidem'); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/suppliers/register`, {
+      const res = await fetch(`${API_BASE}/contractors/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email.trim(),
           password: form.password,
-          role: form.supplierType,
           companyName: form.companyName.trim(),
-          tradeName: form.tradeName.trim() || undefined,
           cnpj: form.cnpj.replace(/\D/g, ''),
-          ie: form.stateRegistration.trim() || undefined,
+          ie: form.ie.trim() || undefined,
           phone: form.phone.trim(),
           address: {
-            cep: form.cep.replace(/\D/g, ''), street: form.street.trim(), number: form.number.trim(),
-            complement: form.complement.trim() || undefined, neighborhood: form.neighborhood.trim(),
-            city: form.city.trim(), state: form.state.trim(),
+            cep: form.cep.replace(/\D/g, ''),
+            street: form.street.trim(),
+            number: form.number.trim(),
+            complement: form.complement.trim() || undefined,
+            neighborhood: form.neighborhood.trim(),
+            city: form.city.trim(),
+            state: form.state.trim(),
           },
         }),
       });
       const body = await res.json() as { userId?: string; message?: string };
       if (!res.ok) { setError(body?.message ?? 'Erro ao criar conta'); return; }
       setUserId(body.userId ?? null);
-      setStep(6);
+      setStep(4);
     } catch { setError('Erro de conexão. Tente novamente.'); }
     finally { setLoading(false); }
   }
@@ -160,11 +159,10 @@ export default function CadastroFornecedorPage() {
         <div className="w-full max-w-lg">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-black text-gray-900" style={{ fontFamily: 'var(--font-montserrat)' }}>
-              Cadastro de Fornecedor
+              Cadastro de Construtora
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Já tem conta?{' '}
-              <Link href="/login" className="font-semibold hover:underline" style={{ color: '#E8622C' }}>Entrar</Link>
+              Acesso B2B com preços de atacado e crédito empresarial
             </p>
           </div>
 
@@ -194,26 +192,21 @@ export default function CadastroFornecedorPage() {
           <div className="bg-white rounded-[20px] p-8" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
             {error && <p className="mb-5 px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-600">{error}</p>}
 
-            {/* Step 1 — Tipo */}
+            {/* Step 1 — Empresa */}
             {step === 1 && (
               <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Tipo de fornecedor</h2>
-                <p className="text-sm text-gray-500 mb-6">Selecione o modelo do seu negócio</p>
+                <h2 className="text-lg font-bold text-gray-900 mb-5">Dados da empresa</h2>
                 <div className="space-y-4">
-                  {([
-                    { value: 'SUPPLIER_STORE' as const, title: 'Loja de materiais', desc: 'Revenda produtos de diferentes marcas ao consumidor final ou empresas.', icon: '🏪' },
-                    { value: 'SUPPLIER_FACTORY' as const, title: 'Fábrica / Indústria', desc: 'Venda produtos de fabricação própria com tabela B2B e MOQ.', icon: '🏭' },
-                  ]).map(({ value, title, desc, icon }) => (
-                    <button key={value} type="button" onClick={() => set('supplierType', value)}
-                      className="w-full flex items-start gap-4 p-5 rounded-[16px] border-2 text-left transition-all"
-                      style={{ borderColor: form.supplierType === value ? '#E8622C' : '#E5E7EB', backgroundColor: form.supplierType === value ? '#FFF7F4' : '#fff' }}>
-                      <span className="text-3xl">{icon}</span>
-                      <div>
-                        <p className="font-bold text-gray-900 text-sm">{title}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
-                      </div>
-                    </button>
-                  ))}
+                  <div><label className={labelCls}>Razão social *</label>
+                    <input value={form.companyName} onChange={(e) => set('companyName', e.target.value)} className={inputCls} placeholder="Construtora ABC Ltda." /></div>
+                  <div><label className={labelCls}>CNPJ *</label>
+                    <input value={form.cnpj} onChange={(e) => set('cnpj', maskCnpj(e.target.value))} className={inputCls} placeholder="00.000.000/0001-00" /></div>
+                  <div><label className={labelCls}>Inscrição Estadual</label>
+                    <input value={form.ie} onChange={(e) => set('ie', e.target.value)} className={inputCls} placeholder="Opcional" /></div>
+                  <div><label className={labelCls}>E-mail corporativo *</label>
+                    <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={inputCls} placeholder="contato@construtora.com.br" /></div>
+                  <div><label className={labelCls}>Telefone *</label>
+                    <input value={form.phone} onChange={(e) => set('phone', maskPhone(e.target.value))} className={inputCls} placeholder="(11) 99999-9999" /></div>
                 </div>
                 <button onClick={nextStep} className={`w-full mt-6 ${btnNext}`} style={{ backgroundColor: '#E8622C' }}>
                   Continuar →
@@ -221,52 +214,15 @@ export default function CadastroFornecedorPage() {
               </div>
             )}
 
-            {/* Step 2 — Empresa */}
+            {/* Step 2 — Endereço */}
             {step === 2 && (
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-5">Dados da empresa</h2>
-                <div className="space-y-4">
-                  <div><label className={labelCls}>Razão social *</label>
-                    <input value={form.companyName} onChange={(e) => set('companyName', e.target.value)} className={inputCls} placeholder="Nome Comércio Ltda." /></div>
-                  <div><label className={labelCls}>Nome fantasia</label>
-                    <input value={form.tradeName} onChange={(e) => set('tradeName', e.target.value)} className={inputCls} placeholder="Como é conhecido no mercado" /></div>
-                  <div><label className={labelCls}>CNPJ *</label>
-                    <input value={form.cnpj} onChange={(e) => set('cnpj', maskCnpj(e.target.value))} className={inputCls} placeholder="00.000.000/0000-00" /></div>
-                  <div><label className={labelCls}>Inscrição Estadual</label>
-                    <input value={form.stateRegistration} onChange={(e) => set('stateRegistration', e.target.value)} className={inputCls} placeholder="Opcional" /></div>
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <button onClick={() => setStep(1)} className={btnBack}>← Voltar</button>
-                  <button onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3 — Contato */}
-            {step === 3 && (
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-5">Dados de contato</h2>
-                <div className="space-y-4">
-                  <div><label className={labelCls}>E-mail *</label>
-                    <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={inputCls} placeholder="contato@empresa.com.br" /></div>
-                  <div><label className={labelCls}>Telefone *</label>
-                    <input value={form.phone} onChange={(e) => set('phone', maskPhone(e.target.value))} className={inputCls} placeholder="(11) 99999-9999" /></div>
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <button onClick={() => setStep(2)} className={btnBack}>← Voltar</button>
-                  <button onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4 — Endereço */}
-            {step === 4 && (
               <div>
                 <h2 className="text-lg font-bold text-gray-900 mb-5">Endereço da empresa</h2>
                 <div className="space-y-4">
                   <div>
                     <label className={labelCls}>CEP *</label>
-                    <input value={form.cep} onChange={(e) => { const v = maskCep(e.target.value); set('cep', v); if (v.replace(/\D/g, '').length === 8) lookupCep(v); }}
+                    <input value={form.cep}
+                      onChange={(e) => { const v = maskCep(e.target.value); set('cep', v); if (v.replace(/\D/g, '').length === 8) lookupCep(v); }}
                       className={inputCls} placeholder="00000-000" />
                     {fetchingCep && <p className="text-xs text-gray-400 mt-1">Buscando endereço...</p>}
                   </div>
@@ -276,7 +232,7 @@ export default function CadastroFornecedorPage() {
                     <div><label className={labelCls}>Número *</label>
                       <input value={form.number} onChange={(e) => set('number', e.target.value)} className={inputCls} placeholder="123" /></div>
                     <div><label className={labelCls}>Complemento</label>
-                      <input value={form.complement} onChange={(e) => set('complement', e.target.value)} className={inputCls} placeholder="Sala, Galpão..." /></div>
+                      <input value={form.complement} onChange={(e) => set('complement', e.target.value)} className={inputCls} placeholder="Sala, Andar..." /></div>
                   </div>
                   <div><label className={labelCls}>Bairro</label>
                     <input value={form.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} className={inputCls} placeholder="Bairro" /></div>
@@ -288,17 +244,17 @@ export default function CadastroFornecedorPage() {
                   </div>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setStep(3)} className={btnBack}>← Voltar</button>
+                  <button onClick={() => setStep(1)} className={btnBack}>← Voltar</button>
                   <button onClick={nextStep} className={btnNext} style={{ backgroundColor: '#E8622C' }}>Continuar →</button>
                 </div>
               </div>
             )}
 
-            {/* Step 5 — Acesso */}
-            {step === 5 && (
+            {/* Step 3 — Acesso */}
+            {step === 3 && (
               <form onSubmit={handleRegister}>
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Dados de acesso</h2>
-                <p className="text-sm text-gray-500 mb-5">Crie a senha para o painel do fornecedor</p>
+                <p className="text-sm text-gray-500 mb-5">Crie a senha para acessar o marketplace B2B</p>
                 <div className="space-y-4">
                   <div><label className={labelCls}>Senha *</label>
                     <input type="password" value={form.password} onChange={(e) => set('password', e.target.value)} required className={inputCls} placeholder="Mínimo 8 caracteres" /></div>
@@ -312,7 +268,7 @@ export default function CadastroFornecedorPage() {
                   </p>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button type="button" onClick={() => setStep(4)} className={btnBack}>← Voltar</button>
+                  <button type="button" onClick={() => setStep(2)} className={btnBack}>← Voltar</button>
                   <button type="submit" disabled={loading} className={`${btnNext} disabled:opacity-50`} style={{ backgroundColor: '#E8622C' }}>
                     {loading ? 'Processando...' : 'Continuar →'}
                   </button>
@@ -320,8 +276,8 @@ export default function CadastroFornecedorPage() {
               </form>
             )}
 
-            {/* Step 6 — Documentos */}
-            {step === 6 && userId && (
+            {/* Step 4 — Documentos */}
+            {step === 4 && userId && (
               <div>
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Documentos</h2>
                 <p className="text-xs text-gray-400 mb-4">
@@ -381,7 +337,7 @@ export default function CadastroFornecedorPage() {
                   })}
                 </div>
                 <button
-                  onClick={() => router.push('/cadastro-fornecedor/pendente')}
+                  onClick={() => router.push('/cadastro-construtora/pendente')}
                   disabled={!allRequiredUploaded}
                   className={`w-full mt-5 ${btnNext} disabled:opacity-50`}
                   style={{ backgroundColor: '#E8622C' }}
@@ -396,6 +352,11 @@ export default function CadastroFornecedorPage() {
               </div>
             )}
           </div>
+
+          <p className="text-center text-sm text-gray-400 mt-5">
+            Já tem conta?{' '}
+            <Link href="/login" className="font-semibold" style={{ color: '#E8622C' }}>Entrar</Link>
+          </p>
         </div>
       </main>
     </div>

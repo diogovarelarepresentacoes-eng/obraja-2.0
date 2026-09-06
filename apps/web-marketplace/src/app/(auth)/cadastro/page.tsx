@@ -4,17 +4,13 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { setBuyerToken } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 interface RegisterResponse {
-  success: boolean;
-  data: {
-    accessToken?: string;
-    user?: { id: string; email: string; role: string };
-  };
+  accessToken?: string;
   message?: string;
+  status?: string;
 }
 
 function maskPhone(v: string) {
@@ -55,7 +51,7 @@ export default function CadastroPage() {
     if (!firstName.trim()) return 'Nome obrigatório';
     if (!lastName.trim()) return 'Sobrenome obrigatório';
     if (!email.trim() || !email.includes('@')) return 'E-mail inválido';
-    if (password.length < 6) return 'Senha deve ter ao menos 6 caracteres';
+    if (password.length < 8) return 'Senha deve ter ao menos 8 caracteres';
     if (password !== confirmPassword) return 'As senhas não coincidem';
     return null;
   }
@@ -88,9 +84,8 @@ export default function CadastroPage() {
 
       if (!res.ok) { setError(data?.message ?? 'Erro ao criar conta'); return; }
 
-      if (data.data?.accessToken) {
-        setBuyerToken(data.data.accessToken);
-        if (data.data.user) useAuthStore.getState().setUser(data.data.user);
+      if (data.accessToken) {
+        setBuyerToken(data.accessToken);
         router.push('/meus-pedidos');
       } else {
         router.push('/login?success=Conta+criada+com+sucesso%21+Faça+login+para+continuar.');
@@ -178,7 +173,7 @@ export default function CadastroPage() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Mínimo 8 caracteres"
             className={inputCls}
           />
           {strength.level > 0 && (

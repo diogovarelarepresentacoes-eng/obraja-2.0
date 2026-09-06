@@ -2,13 +2,11 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
-import { RegisterSupplierDto } from './dto/register-supplier.dto';
-import { UpdateSupplierDto } from './dto/update-supplier.dto';
-import { UserStatus } from '@obraja/types';
+import { RegisterContractorDto } from './dto/register-contractor.dto';
+import { UserStatus, UserRole } from '@obraja/types';
 
 function cleanCnpj(cnpj: string) {
   return cnpj.replace(/[^\d]/g, '');
@@ -33,10 +31,10 @@ function isValidCnpj(raw: string): boolean {
 }
 
 @Injectable()
-export class SuppliersService {
+export class ContractorsService {
   constructor(private prisma: PrismaService) {}
 
-  async register(dto: RegisterSupplierDto) {
+  async register(dto: RegisterContractorDto) {
     if (!isValidCnpj(dto.cnpj)) {
       throw new ConflictException('CNPJ inválido');
     }
@@ -45,7 +43,7 @@ export class SuppliersService {
 
     const [emailExists, cnpjExists] = await Promise.all([
       this.prisma.user.findUnique({ where: { email: dto.email } }),
-      this.prisma.supplierProfile.findUnique({ where: { cnpj } }),
+      this.prisma.contractorProfile.findUnique({ where: { cnpj } }),
     ]);
 
     if (emailExists) throw new ConflictException('E-mail já cadastrado');
@@ -58,12 +56,11 @@ export class SuppliersService {
         email: dto.email,
         passwordHash,
         phone: dto.phone,
-        role: dto.role,
+        role: UserRole.CONTRACTOR,
         status: UserStatus.PENDING_REVIEW,
-        supplierProfile: {
+        contractorProfile: {
           create: {
             companyName: dto.companyName,
-            tradeName: dto.tradeName,
             cnpj,
             ie: dto.ie,
             phone: dto.phone,
@@ -76,7 +73,7 @@ export class SuppliersService {
         email: true,
         role: true,
         status: true,
-        supplierProfile: { select: { companyName: true, cnpj: true } },
+        contractorProfile: { select: { companyName: true, cnpj: true } },
       },
     });
 
@@ -90,62 +87,34 @@ export class SuppliersService {
   }
 
   async getMyProfile(userId: string) {
-    const supplier = await this.prisma.supplierProfile.findUnique({
+    const contractor = await this.prisma.contractorProfile.findUnique({
       where: { userId },
-      include: { address: true, user: { select: { email: true, phone: true, status: true } } },
+      include: {
+        address: true,
+        user: { select: { email: true, phone: true, status: true } },
+      },
     });
 
-    if (!supplier) throw new NotFoundException('Perfil de fornecedor não encontrado');
-    return supplier;
-  }
-
-  async updateProfile(userId: string, dto: UpdateSupplierDto) {
-    const supplier = await this.prisma.supplierProfile.findUnique({ where: { userId } });
-    if (!supplier) throw new NotFoundException('Perfil de fornecedor não encontrado');
-
-    return this.prisma.supplierProfile.update({
-      where: { userId },
-      data: dto,
-    });
-  }
-
-  async getStats(userId: string) {
-    const supplier = await this.prisma.supplierProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-
-    if (!supplier) throw new ForbiddenException();
-
-    const [products, pendingOrders, completedOrders] = await Promise.all([
-      this.prisma.product.count({ where: { supplierId: supplier.id, deletedAt: null } }),
-      this.prisma.subOrder.count({
-        where: { supplierId: supplier.id, status: 'AWAITING_SEPARATION' },
-      }),
-      this.prisma.subOrder.count({
-        where: { supplierId: supplier.id, status: 'DELIVERED' },
-      }),
-    ]);
-
-    return { products, pendingOrders, completedOrders };
+    if (!contractor) throw new NotFoundException('Perfil de construtora não encontrado');
+    return contractor;
   }
 
   async findAll(page: number, limit: number) {
     const skip = (page - 1) * limit;
 
-    const [suppliers, total] = await Promise.all([
-      this.prisma.supplierProfile.findMany({
+    const [contractors, total] = await Promise.all([
+      this.prisma.contractorProfile.findMany({
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
           address: true,
-          user: { select: { email: true, status: true, role: true } },
+          user: { select: { email: true, status: true } },
         },
       }),
-      this.prisma.supplierProfile.count(),
+      this.prisma.contractorProfile.count(),
     ]);
 
-    return { data: suppliers, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: contractors, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }

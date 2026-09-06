@@ -50,7 +50,12 @@ export class ApprovalsService {
   async approve(userId: string, dto: ApproveDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true, status: true, contractorProfile: { select: { id: true } } },
+      select: {
+        role: true,
+        status: true,
+        contractorProfile: { select: { id: true } },
+        supplierProfile: { select: { id: true } },
+      },
     });
 
     if (!user) throw new NotFoundException('Usuário não encontrado');
@@ -69,6 +74,16 @@ export class ApprovalsService {
         await tx.contractorProfile.update({
           where: { id: user.contractorProfile.id },
           data: { creditLimit: dto.creditLimit ?? 0 },
+        });
+      }
+
+      if (
+        (user.role === UserRole.SUPPLIER_STORE || user.role === UserRole.SUPPLIER_FACTORY) &&
+        user.supplierProfile
+      ) {
+        await tx.supplierProfile.update({
+          where: { id: user.supplierProfile.id },
+          data: { isVerified: true },
         });
       }
 

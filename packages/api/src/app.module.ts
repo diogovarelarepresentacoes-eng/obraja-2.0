@@ -16,6 +16,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PaymentsModule } from './modules/payments/payments.module';
 import { DeliveryModule } from './modules/delivery/delivery.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { ContractorsModule } from './modules/contractors/contractors.module';
+import { DriversModule } from './modules/drivers/drivers.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { DocumentsModule } from './modules/documents/documents.module';
     PaymentsModule,
     DeliveryModule,
     DocumentsModule,
+    ContractorsModule,
+    DriversModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

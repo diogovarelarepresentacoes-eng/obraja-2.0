@@ -291,7 +291,7 @@ export default async function LandingPage() {
               </ul>
             </div>
             <Link
-              href="/cadastro"
+              href="/cadastro-construtora"
               className="mt-8 inline-block px-6 py-3 rounded-full font-bold text-sm text-center hover:opacity-90 transition-opacity"
               style={{ backgroundColor: '#9A3412', color: '#fff' }}
             >
@@ -391,6 +391,7 @@ export default async function LandingPage() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Parceiros</p>
               <nav className="space-y-2">
                 <Link href="/cadastro-fornecedor" className="block text-sm text-gray-400 hover:text-white transition-colors">Seja fornecedor</Link>
+                <Link href="/cadastro-construtora" className="block text-sm text-gray-400 hover:text-white transition-colors">Seja construtora</Link>
                 <Link href="/cadastro-entregador" className="block text-sm text-gray-400 hover:text-white transition-colors">Seja entregador</Link>
               </nav>
             </div>

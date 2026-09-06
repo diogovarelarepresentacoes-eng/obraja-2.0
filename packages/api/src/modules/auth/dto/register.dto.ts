@@ -1,7 +1,11 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '@obraja/types';
 
+// /auth/register é exclusivo para compradores (BUYER).
+// Fornecedores → POST /suppliers/register
+// Construtoras  → POST /contractors/register
+// Entregadores  → POST /drivers/register
 export class RegisterDto {
   @ApiProperty({ example: 'joao@email.com' })
   @IsEmail({}, { message: 'E-mail inválido' })
@@ -25,8 +29,8 @@ export class RegisterDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ enum: UserRole, default: UserRole.BUYER })
+  @ApiPropertyOptional({ enum: [UserRole.BUYER], default: UserRole.BUYER })
   @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
+  @IsIn([UserRole.BUYER], { message: 'Use o endpoint específico para cadastro de fornecedores, construtoras ou entregadores' })
+  role?: UserRole.BUYER;
 }

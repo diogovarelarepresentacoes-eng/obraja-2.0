@@ -78,6 +78,9 @@ export default function CadastroEntregadorPage() {
       if (!form.vehicleType) return 'Tipo de veículo obrigatório';
       if (form.vehiclePlate.length !== 7) return 'Placa inválida (7 caracteres)';
       if (!form.vehicleBrand || !form.vehicleModel) return 'Marca e modelo obrigatórios';
+      const year = Number(form.vehicleYear);
+      if (!form.vehicleYear || isNaN(year) || year < 1990 || year > 2030) return 'Ano do veículo obrigatório (1990–2030)';
+      if (!form.vehicleColor.trim()) return 'Cor do veículo obrigatória';
     }
     return null;
   }
@@ -97,7 +100,7 @@ export default function CadastroEntregadorPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/delivery/register`, {
+      const res = await fetch(`${API_BASE}/drivers/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -111,13 +114,13 @@ export default function CadastroEntregadorPage() {
           vehiclePlate: form.vehiclePlate,
           vehicleBrand: form.vehicleBrand,
           vehicleModel: form.vehicleModel,
-          vehicleYear: form.vehicleYear ? Number(form.vehicleYear) : undefined,
-          vehicleColor: form.vehicleColor || undefined,
+          vehicleYear: Number(form.vehicleYear),
+          vehicleColor: form.vehicleColor,
         }),
       });
-      const body = await res.json() as { success?: boolean; data?: { userId: string }; message?: string };
+      const body = await res.json() as { userId?: string; message?: string };
       if (!res.ok) throw new Error(body.message ?? 'Erro ao cadastrar');
-      setUserId(body.data?.userId ?? null);
+      setUserId(body.userId ?? null);
       setStep(4);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao cadastrar');
@@ -227,11 +230,11 @@ export default function CadastroEntregadorPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>Ano</label>
+                    <label className={labelCls}>Ano *</label>
                     <input type="number" value={form.vehicleYear} onChange={(e) => set('vehicleYear', e.target.value)} className={inputCls} placeholder="2022" min={1990} max={2030} />
                   </div>
                   <div>
-                    <label className={labelCls}>Cor</label>
+                    <label className={labelCls}>Cor *</label>
                     <input value={form.vehicleColor} onChange={(e) => set('vehicleColor', e.target.value)} className={inputCls} placeholder="Vermelho" />
                   </div>
                 </div>
