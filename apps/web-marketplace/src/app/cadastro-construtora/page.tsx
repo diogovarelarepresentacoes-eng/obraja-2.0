@@ -135,9 +135,9 @@ export default function CadastroConstrutorPage() {
           },
         }),
       });
-      const body = await res.json() as { userId?: string; message?: string };
+      const body = await res.json() as { success?: boolean; data?: { userId?: string }; message?: string };
       if (!res.ok) { setError(body?.message ?? 'Erro ao criar conta'); return; }
-      setUserId(body.userId ?? null);
+      setUserId(body.data?.userId ?? null);
       setStep(4);
     } catch { setError('Erro de conexão. Tente novamente.'); }
     finally { setLoading(false); }

@@ -118,9 +118,9 @@ export default function CadastroEntregadorPage() {
           vehicleColor: form.vehicleColor,
         }),
       });
-      const body = await res.json() as { userId?: string; message?: string };
+      const body = await res.json() as { success?: boolean; data?: { userId?: string }; message?: string };
       if (!res.ok) throw new Error(body.message ?? 'Erro ao cadastrar');
-      setUserId(body.userId ?? null);
+      setUserId(body.data?.userId ?? null);
       setStep(4);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao cadastrar');

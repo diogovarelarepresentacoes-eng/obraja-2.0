@@ -8,9 +8,9 @@ import { setBuyerToken } from '@/lib/api';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 interface RegisterResponse {
-  accessToken?: string;
+  success?: boolean;
+  data?: { accessToken?: string; message?: string; status?: string };
   message?: string;
-  status?: string;
 }
 
 function maskPhone(v: string) {
@@ -84,8 +84,8 @@ export default function CadastroPage() {
 
       if (!res.ok) { setError(data?.message ?? 'Erro ao criar conta'); return; }
 
-      if (data.accessToken) {
-        setBuyerToken(data.accessToken);
+      if (data.data?.accessToken) {
+        setBuyerToken(data.data.accessToken);
         router.push('/meus-pedidos');
       } else {
         router.push('/login?success=Conta+criada+com+sucesso%21+Faça+login+para+continuar.');
