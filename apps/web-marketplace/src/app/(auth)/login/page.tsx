@@ -57,6 +57,19 @@ function LoginPageContent() {
 
       setBuyerToken(body.data.accessToken);
       useAuthStore.getState().setUser(body.data.user);
+
+      const role = body.data.user.role;
+      const supplierUrl = process.env.NEXT_PUBLIC_SUPPLIER_URL ?? 'http://localhost:3003';
+
+      if (['SUPPLIER_STORE', 'SUPPLIER_FACTORY'].includes(role)) {
+        window.location.href = `${supplierUrl}/sso?token=${encodeURIComponent(body.data.accessToken)}&to=/dashboard`;
+        return;
+      }
+      if (role === 'DRIVER') {
+        window.location.href = `${supplierUrl}/sso?token=${encodeURIComponent(body.data.accessToken)}&to=/entregador/dashboard`;
+        return;
+      }
+
       router.push(returnUrl);
     } catch {
       setError('Erro de conexão. Tente novamente.');

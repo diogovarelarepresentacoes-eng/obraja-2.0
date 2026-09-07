@@ -49,12 +49,25 @@ export function Header() {
         <div className="flex items-center gap-3 flex-shrink-0">
           {user ? (
             <>
-              <Link
-                href="/meus-pedidos"
-                className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block"
-              >
-                Olá, {user.firstName ?? user.email.split('@')[0]}
-              </Link>
+              {['SUPPLIER_STORE', 'SUPPLIER_FACTORY', 'DRIVER'].includes(user.role) ? (
+                <a
+                  href={
+                    user.role === 'DRIVER'
+                      ? `${process.env.NEXT_PUBLIC_SUPPLIER_URL ?? 'http://localhost:3003'}/entregador/dashboard`
+                      : `${process.env.NEXT_PUBLIC_SUPPLIER_URL ?? 'http://localhost:3003'}/dashboard`
+                  }
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block"
+                >
+                  Ir para meu painel →
+                </a>
+              ) : (
+                <Link
+                  href="/meus-pedidos"
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block"
+                >
+                  Olá, {user.firstName ?? user.email.split('@')[0]}
+                </Link>
+              )}
               <button
                 onClick={handleLogout}
                 className="text-gray-400 hover:text-white text-sm transition-colors"

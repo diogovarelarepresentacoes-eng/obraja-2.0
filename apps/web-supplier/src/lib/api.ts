@@ -29,12 +29,30 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return (body as { success: boolean; data: T }).data;
 }
 
+async function uploadFile<T>(path: string, file: File): Promise<T> {
+  const token = getToken();
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body?.message ?? `Erro ${res.status}`);
+  return (body as { success: boolean; data: T }).data;
+}
+
 export const api = {
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   get: <T>(path: string) => request<T>(path),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: <T>(path: string) =>
+    request<T>(path, { method: 'DELETE' }),
+  upload: <T>(path: string, file: File) => uploadFile<T>(path, file),
 };
 
 const SUPPLIER_COOKIE = 'obraja_supplier_has_token';

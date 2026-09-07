@@ -102,9 +102,12 @@ export default function CadastroEntregadorPage() {
   async function handleConcluir() {
     setError('');
     setSubmitting(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
     try {
       const res = await fetch(`${API_BASE}/drivers/register`, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           firstName: form.firstName,
@@ -141,8 +144,13 @@ export default function CadastroEntregadorPage() {
       }
       router.push('/cadastro-entregador/pendente');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('A requisição expirou (30s). Verifique sua conexão e tente novamente.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
+      }
     } finally {
+      clearTimeout(timeout);
       setSubmitting(false);
     }
   }

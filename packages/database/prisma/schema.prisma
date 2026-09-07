@@ -53,6 +53,13 @@ enum ProductStatus {
   OUT_OF_STOCK
 }
 
+enum DeliveryOption {
+  PICKUP
+  OWN_DELIVERY
+  CARRIER
+  PLATFORM
+}
+
 enum OrderStatus {
   PENDING_PAYMENT
   PAYMENT_CONFIRMED
@@ -349,8 +356,9 @@ model Product {
   heightCm      Float?
   depthCm       Float?
   status        ProductStatus @default(ACTIVE)
-  isHighlighted Boolean       @default(false)
-  createdAt     DateTime      @default(now())
+  isHighlighted   Boolean          @default(false)
+  deliveryOptions DeliveryOption[]
+  createdAt       DateTime         @default(now())
   updatedAt     DateTime      @updatedAt
   deletedAt     DateTime?
 

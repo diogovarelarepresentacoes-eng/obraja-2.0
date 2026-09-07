@@ -90,10 +90,12 @@ export default function MeusPedidosPage() {
 
   useEffect(() => {
     if (!getBuyerToken()) { router.replace('/login?returnUrl=/meus-pedidos'); return; }
+    let cancelled = false;
     authApi.get<OrderList>('/orders')
-      .then((r) => setOrders(r.data ?? []))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar pedidos'))
-      .finally(() => setLoading(false));
+      .then((r) => { if (!cancelled) setOrders(r.data ?? []); })
+      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Erro ao carregar pedidos'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [router]);
 
   return (

@@ -136,8 +136,8 @@ export class ApprovalsService {
     });
 
     const companyName =
-      (user as any).supplierProfile?.companyName ??
-      (user as any).contractorProfile?.companyName ??
+      user.supplierProfile?.companyName ??
+      user.contractorProfile?.companyName ??
       user.email;
     void this.mail.sendRejectionEmail(user.email, companyName, dto.reason);
 

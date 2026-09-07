@@ -35,6 +35,16 @@ export default function ProdutosPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api.get<ProductList>('/products/mine?limit=100')
+      .then((data) => { if (!cancelled) setList(data); })
+      .catch(() => { if (!cancelled) router.push('/login'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [router]);
+
   function load() {
     setLoading(true);
     api.get<ProductList>('/products/mine?limit=100')
@@ -42,8 +52,6 @@ export default function ProdutosPage() {
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false));
   }
-
-  useEffect(() => { load(); }, []);
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remover "${name}"?`)) return;

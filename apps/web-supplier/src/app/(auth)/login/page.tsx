@@ -20,9 +20,13 @@ export default function SupplierLoginPage() {
     setLoading(true);
 
     try {
-      const result = await api.post<{ accessToken: string }>('/auth/login', { email, password });
+      const result = await api.post<{ accessToken: string; user: { role: string } }>('/auth/login', { email, password });
       setSupplierToken(result.accessToken);
-      router.push('/dashboard');
+      if (result.user?.role === 'DRIVER') {
+        router.push('/entregador/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Falha no login';
       if (msg.toLowerCase().includes('aguardando aprovação') || msg.toLowerCase().includes('aguardando aprovacao')) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
@@ -12,11 +12,21 @@ interface Category {
 
 const UNITS = ['un', 'kg', 'g', 't', 'm', 'm²', 'm³', 'L', 'ml', 'cx', 'pc', 'rolo', 'fardo', 'saco', 'barra'];
 
+const DELIVERY_OPTIONS = [
+  { value: 'PICKUP', label: 'Retirada no local', desc: 'Cliente retira no seu endereço' },
+  { value: 'OWN_DELIVERY', label: 'Entrega própria', desc: 'Você faz a entrega com sua equipe' },
+  { value: 'CARRIER', label: 'Transportadora', desc: 'Via Correios, Jadlog ou similar' },
+  { value: 'PLATFORM', label: 'Entrega ObraJá', desc: 'Entregadores cadastrados na plataforma' },
+];
+
 export default function NovoProdutoPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -33,6 +43,7 @@ export default function NovoProdutoPage() {
     heightCm: '',
     depthCm: '',
     isHighlighted: false,
+    deliveryOptions: [] as string[],
   });
 
   useEffect(() => {
@@ -41,6 +52,29 @@ export default function NovoProdutoPage() {
 
   function set(field: string, value: string | boolean) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function toggleDelivery(opt: string) {
+    setForm((f) => ({
+      ...f,
+      deliveryOptions: f.deliveryOptions.includes(opt)
+        ? f.deliveryOptions.filter((d) => d !== opt)
+        : [...f.deliveryOptions, opt],
+    }));
+  }
+
+  function handleFileStage(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setStagedFiles((prev) => [...prev, ...files]);
+    setPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removeStagedFile(index: number) {
+    URL.revokeObjectURL(previews[index]);
+    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,7 +87,7 @@ export default function NovoProdutoPage() {
 
     setSaving(true);
     try {
-      await api.post('/products', {
+      const product = await api.post<{ id: string }>('/products', {
         name: form.name.trim(),
         sku: form.sku.trim() || undefined,
         description: form.description.trim() || undefined,
@@ -68,7 +102,11 @@ export default function NovoProdutoPage() {
         heightCm: form.heightCm ? Number(form.heightCm) : undefined,
         depthCm: form.depthCm ? Number(form.depthCm) : undefined,
         isHighlighted: form.isHighlighted,
+        deliveryOptions: form.deliveryOptions,
       });
+      for (const file of stagedFiles) {
+        try { await api.upload(`/products/${product.id}/images`, file); } catch {}
+      }
       router.push('/produtos');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao salvar produto');
@@ -284,6 +322,67 @@ export default function NovoProdutoPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
               />
             </div>
+          </div>
+        </section>
+
+        {/* Imagens */}
+        <section className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+          <h2 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Imagens do produto</h2>
+          {previews.length > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              {previews.map((url, i) => (
+                <div key={i} className="relative group rounded-lg overflow-hidden">
+                  <img src={url} alt="" className="w-full aspect-square object-cover" />
+                  {i === 0 && (
+                    <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">Principal</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeStagedFile(i)}
+                    className="absolute top-1.5 right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                  >×</button>
+                </div>
+              ))}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 transition-colors text-gray-400"
+              >
+                <span className="text-2xl">+</span>
+                <span className="text-xs mt-1">Adicionar</span>
+              </div>
+            </div>
+          )}
+          {previews.length === 0 && (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-orange-300 transition-colors"
+            >
+              <p className="text-3xl mb-2">🖼️</p>
+              <p className="text-sm text-gray-500">Clique para adicionar imagens</p>
+              <p className="text-xs text-gray-400 mt-1">JPG, PNG ou WEBP · máx 10 MB · A 1ª imagem será a principal</p>
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleFileStage} />
+        </section>
+
+        {/* Formas de entrega */}
+        <section className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+          <h2 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Formas de entrega</h2>
+          <div className="space-y-2">
+            {DELIVERY_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={form.deliveryOptions.includes(opt.value)}
+                  onChange={() => toggleDelivery(opt.value)}
+                  className="mt-0.5 w-4 h-4 accent-orange-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-800 group-hover:text-orange-600 transition-colors">{opt.label}</p>
+                  <p className="text-xs text-gray-400">{opt.desc}</p>
+                </div>
+              </label>
+            ))}
           </div>
         </section>
 

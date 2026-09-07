@@ -75,3 +75,10 @@ export enum VehicleType {
   CAMINHONETE = 'CAMINHONETE',
   CAMINHAO = 'CAMINHAO',
 }
+
+export enum DeliveryOption {
+  PICKUP = 'PICKUP',
+  OWN_DELIVERY = 'OWN_DELIVERY',
+  CARRIER = 'CARRIER',
+  PLATFORM = 'PLATFORM',
+}

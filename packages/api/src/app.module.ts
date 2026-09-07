@@ -20,6 +20,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { ContractorsModule } from './modules/contractors/contractors.module';
 import { DriversModule } from './modules/drivers/drivers.module';
 import { MailModule } from './modules/mail/mail.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { MailModule } from './modules/mail/mail.module';
     ContractorsModule,
     DriversModule,
     MailModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -1,7 +1,8 @@
 import {
-  IsString, IsNumber, IsOptional, IsInt, IsBoolean, Min, IsUUID,
+  IsString, IsNumber, IsOptional, IsInt, IsBoolean, Min, IsUUID, IsArray, IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { DeliveryOption } from '@obraja/types';
 
 export class CreateProductDto {
   @ApiProperty({ example: 'Cimento CP-II 50kg' })
@@ -45,4 +46,7 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({ default: true })
   @IsOptional() @IsBoolean() isHighlighted?: boolean;
+
+  @ApiPropertyOptional({ enum: DeliveryOption, isArray: true, description: 'Formas de entrega disponíveis' })
+  @IsOptional() @IsArray() @IsEnum(DeliveryOption, { each: true }) deliveryOptions?: DeliveryOption[];
 }

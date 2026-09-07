@@ -1,6 +1,9 @@
 import {
-  Injectable, NotFoundException, ForbiddenException, ConflictException,
+  Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException,
 } from '@nestjs/common';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
+import { join, extname } from 'path';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto, UpdateStockDto } from './dto/update-product.dto';
@@ -172,5 +175,79 @@ export class ProductsService {
       data: { deletedAt: new Date(), status: 'INACTIVE' },
       select: { id: true, deletedAt: true },
     });
+  }
+
+  // ── Image management ──────────────────────────────────────────────
+
+  async addImage(
+    productId: string,
+    userId: string,
+    file: { buffer: Buffer; mimetype: string; size: number; originalname: string },
+    baseUrl: string,
+  ) {
+    const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!ALLOWED.has(file.mimetype))
+      throw new BadRequestException('Tipo inválido. Use JPG, PNG ou WEBP.');
+    if (file.size > 10 * 1024 * 1024)
+      throw new BadRequestException('Arquivo muito grande. Máximo 10 MB.');
+
+    await this.findOne(productId, userId);
+
+    const uploadsDir = join(process.cwd(), 'uploads');
+    if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
+
+    const extMap: Record<string, string> = {
+      'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+    };
+    const ext = extname(file.originalname).toLowerCase() || extMap[file.mimetype] || '.jpg';
+    const filename = `product-${randomUUID()}${ext}`;
+    writeFileSync(join(uploadsDir, filename), file.buffer);
+
+    const count = await this.prisma.productImage.count({ where: { productId } });
+    return this.prisma.productImage.create({
+      data: { productId, url: `${baseUrl}/uploads/${filename}`, isPrimary: count === 0, sortOrder: count },
+    });
+  }
+
+  async deleteImage(imageId: string, userId: string) {
+    const image = await this.prisma.productImage.findUnique({
+      where: { id: imageId },
+      include: { product: { include: { supplier: { select: { userId: true } } } } },
+    });
+    if (!image) throw new NotFoundException('Imagem não encontrada');
+    if (image.product.supplier.userId !== userId) throw new ForbiddenException();
+
+    try {
+      const filename = image.url.split('/uploads/').pop();
+      if (filename) {
+        const fp = join(process.cwd(), 'uploads', filename);
+        if (existsSync(fp)) unlinkSync(fp);
+      }
+    } catch {}
+
+    await this.prisma.productImage.delete({ where: { id: imageId } });
+
+    if (image.isPrimary) {
+      const next = await this.prisma.productImage.findFirst({
+        where: { productId: image.productId },
+        orderBy: { sortOrder: 'asc' },
+      });
+      if (next) await this.prisma.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
+    }
+
+    return { deleted: true };
+  }
+
+  async setPrimaryImage(imageId: string, productId: string, userId: string) {
+    await this.findOne(productId, userId);
+    const image = await this.prisma.productImage.findFirst({ where: { id: imageId, productId } });
+    if (!image) throw new NotFoundException('Imagem não encontrada');
+
+    await this.prisma.$transaction([
+      this.prisma.productImage.updateMany({ where: { productId }, data: { isPrimary: false } }),
+      this.prisma.productImage.update({ where: { id: imageId }, data: { isPrimary: true } }),
+    ]);
+
+    return this.prisma.productImage.findMany({ where: { productId }, orderBy: { sortOrder: 'asc' } });
   }
 }

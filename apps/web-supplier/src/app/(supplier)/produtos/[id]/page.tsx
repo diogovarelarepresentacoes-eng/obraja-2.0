@@ -3,11 +3,26 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { ProductImagesEditor } from '@/components/product-images';
+
+const DELIVERY_OPTIONS = [
+  { value: 'PICKUP', label: 'Retirada no local', desc: 'Cliente retira no seu endereço' },
+  { value: 'OWN_DELIVERY', label: 'Entrega própria', desc: 'Você faz a entrega com sua equipe' },
+  { value: 'CARRIER', label: 'Transportadora', desc: 'Via Correios, Jadlog ou similar' },
+  { value: 'PLATFORM', label: 'Entrega ObraJá', desc: 'Entregadores cadastrados na plataforma' },
+];
 
 interface Category {
   id: string;
   name: string;
   children: { id: string; name: string }[];
+}
+
+interface ProductImage {
+  id: string;
+  url: string;
+  isPrimary: boolean;
+  sortOrder: number;
 }
 
 interface Product {
@@ -28,7 +43,9 @@ interface Product {
   depthCm?: number;
   isHighlighted: boolean;
   status: string;
+  deliveryOptions: string[];
   category: { id: string; name: string };
+  images: ProductImage[];
 }
 
 const UNITS = ['un', 'kg', 'g', 't', 'm', 'm²', 'm³', 'L', 'ml', 'cx', 'pc', 'rolo', 'fardo', 'saco', 'barra'];
@@ -46,6 +63,7 @@ export default function EditarProdutoPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [images, setImages] = useState<ProductImage[]>([]);
 
   const [form, setForm] = useState({
     name: '',
@@ -63,15 +81,17 @@ export default function EditarProdutoPage({ params }: { params: Promise<{ id: st
     depthCm: '',
     isHighlighted: false,
     status: 'ACTIVE',
+    deliveryOptions: [] as string[],
   });
 
   useEffect(() => {
     Promise.all([
       api.get<Category[]>('/categories'),
-      api.get<Product>(`/products/${id}`),
+      api.get<Product>(`/products/mine/${id}`),
     ])
       .then(([cats, product]) => {
         setCategories(cats);
+        setImages(product.images ?? []);
         setForm({
           name: product.name,
           sku: product.sku ?? '',
@@ -88,6 +108,7 @@ export default function EditarProdutoPage({ params }: { params: Promise<{ id: st
           depthCm: product.depthCm ? String(product.depthCm) : '',
           isHighlighted: product.isHighlighted,
           status: product.status,
+          deliveryOptions: product.deliveryOptions ?? [],
         });
       })
       .catch(() => router.push('/produtos'))
@@ -96,6 +117,15 @@ export default function EditarProdutoPage({ params }: { params: Promise<{ id: st
 
   function set(field: string, value: string | boolean) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function toggleDelivery(opt: string) {
+    setForm((f) => ({
+      ...f,
+      deliveryOptions: f.deliveryOptions.includes(opt)
+        ? f.deliveryOptions.filter((d) => d !== opt)
+        : [...f.deliveryOptions, opt],
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -125,6 +155,7 @@ export default function EditarProdutoPage({ params }: { params: Promise<{ id: st
         depthCm: form.depthCm ? Number(form.depthCm) : undefined,
         isHighlighted: form.isHighlighted,
         status: form.status,
+        deliveryOptions: form.deliveryOptions,
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -341,6 +372,30 @@ export default function EditarProdutoPage({ params }: { params: Promise<{ id: st
               <input type="number" min="0" step="0.1" value={form.depthCm} onChange={(e) => set('depthCm', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400" />
             </div>
+          </div>
+        </section>
+
+        {/* Imagens */}
+        <ProductImagesEditor productId={id} initial={images} />
+
+        {/* Formas de entrega */}
+        <section className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+          <h2 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Formas de entrega</h2>
+          <div className="space-y-2">
+            {DELIVERY_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={form.deliveryOptions.includes(opt.value)}
+                  onChange={() => toggleDelivery(opt.value)}
+                  className="mt-0.5 w-4 h-4 accent-orange-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-800 group-hover:text-orange-600 transition-colors">{opt.label}</p>
+                  <p className="text-xs text-gray-400">{opt.desc}</p>
+                </div>
+              </label>
+            ))}
           </div>
         </section>
 

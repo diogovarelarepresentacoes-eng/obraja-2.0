@@ -78,6 +78,9 @@ importers:
 
   apps/web-marketplace:
     dependencies:
+      '@obraja/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@obraja/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -133,6 +136,9 @@ importers:
 
   apps/web-supplier:
     dependencies:
+      '@obraja/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@obraja/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -309,6 +315,8 @@ importers:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+
+  packages/shared: {}
 
   packages/types: {}
 

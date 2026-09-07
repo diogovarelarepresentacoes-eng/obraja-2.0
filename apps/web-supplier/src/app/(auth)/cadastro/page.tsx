@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { maskCnpj, maskPhone, maskCep, fetchCepData } from '@obraja/shared';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 type DocType = 'CONTRATO_SOCIAL' | 'CNPJ' | 'INSCRICAO_ESTADUAL';
@@ -33,29 +34,6 @@ const INITIAL: FormData = {
   email: '', password: '', confirmPassword: '',
 };
 
-function maskCnpj(v: string) {
-  return v.replace(/\D/g, '').replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5').slice(0, 18);
-}
-
-function maskPhone(v: string) {
-  return v.replace(/\D/g, '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3').slice(0, 15);
-}
-
-function maskCep(v: string) {
-  return v.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2').slice(0, 9);
-}
-
-async function fetchCep(cep: string): Promise<Partial<FormData> | null> {
-  const clean = cep.replace(/\D/g, '');
-  if (clean.length !== 8) return null;
-  try {
-    const r = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
-    const d = await r.json() as { logradouro?: string; bairro?: string; localidade?: string; uf?: string; erro?: boolean };
-    if (d.erro) return null;
-    return { street: d.logradouro ?? '', neighborhood: d.bairro ?? '', city: d.localidade ?? '', state: d.uf ?? '' };
-  } catch { return null; }
-}
-
 const STEPS = ['Tipo', 'Empresa', 'Endereço', 'Acesso', 'Documentos'];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
@@ -83,8 +61,8 @@ export default function CadastroPage() {
 
   async function handleCepBlur() {
     setCepLoading(true);
-    const result = await fetchCep(form.cep);
-    if (result) setForm((prev) => ({ ...prev, ...result }));
+    const result = await fetchCepData(form.cep);
+    if (result.ok) setForm((prev) => ({ ...prev, ...result.data }));
     setCepLoading(false);
   }
 

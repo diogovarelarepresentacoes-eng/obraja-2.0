@@ -4,6 +4,7 @@ import { useEffect, useState, ChangeEvent } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/header';
 import { cartApi } from '@/lib/cart-api';
+import { maskCep, fetchCepData, CEP_ERROR_MESSAGES } from '@obraja/shared';
 
 interface CartItem {
   id: string;
@@ -34,7 +35,6 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; desc: string; icon
 ];
 
 function fmt(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-function maskCep(v: string) { return v.replace(/\D/g, '').slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2'); }
 
 const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition';
 const labelCls = 'block text-xs font-semibold text-gray-600 mb-1.5';
@@ -65,22 +65,18 @@ export default function CheckoutPage() {
   }
 
   async function lookupCep() {
-    const raw = address.cep.replace(/\D/g, '');
-    if (raw.length !== 8) return;
+    if (address.cep.replace(/\D/g, '').length !== 8) return;
     setCepLoading(true); setCepError(null);
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
-      const d = await res.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
-      if (d.erro) { setCepError('CEP não encontrado'); return; }
-      setAddress((p) => ({
-        ...p,
-        rua: d.logradouro ?? p.rua,
-        bairro: d.bairro ?? p.bairro,
-        cidade: d.localidade ?? p.cidade,
-        estado: d.uf ?? p.estado,
-      }));
-    } catch { setCepError('Erro ao consultar CEP'); }
-    finally { setCepLoading(false); }
+    const result = await fetchCepData(address.cep);
+    setCepLoading(false);
+    if (!result.ok) { setCepError(CEP_ERROR_MESSAGES[result.error]); return; }
+    setAddress((p) => ({
+      ...p,
+      rua: result.data.street || p.rua,
+      bairro: result.data.neighborhood || p.bairro,
+      cidade: result.data.city || p.cidade,
+      estado: result.data.state || p.estado,
+    }));
   }
 
   function validate(): string | null {

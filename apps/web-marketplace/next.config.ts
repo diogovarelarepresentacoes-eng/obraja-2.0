@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ['@obraja/types', '@obraja/ui'],
+  transpilePackages: ['@obraja/shared', '@obraja/types', '@obraja/ui'],
   images: {
     remotePatterns: [
       {

@@ -54,16 +54,19 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     api.get<Stats>('/approvals/stats')
-      .then(setStats)
+      .then((data) => { if (!cancelled) setStats(data); })
       .catch((err: unknown) => {
+        if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) {
           router.push('/login');
         } else {
           setError('Erro ao carregar dashboard. Recarregue a página.');
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [router]);
 
   if (loading) {

@@ -1,8 +1,10 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, Req,
+  Body, Param, Query, Req, UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -14,7 +16,10 @@ import { UserRole } from '@obraja/types';
 @ApiTags('Products')
 @Controller('products')
 export class ProductsController {
-  constructor(private productsService: ProductsService) {}
+  constructor(
+    private productsService: ProductsService,
+    private config: ConfigService,
+  ) {}
 
   // ── Rotas públicas (sem autenticação) ──────────────────────────────
 
@@ -101,7 +106,56 @@ export class ProductsController {
     return this.productsService.softDelete(id, user.id);
   }
 
-  // ── Rota pública por slug — DEVE vir DEPOIS de /mine ──────────────
+  // ── Produto próprio por ID (para edição) ──────────────────────────
+
+  @Get('mine/:id')
+  @ApiBearerAuth()
+  @Roles(UserRole.SUPPLIER_STORE, UserRole.SUPPLIER_FACTORY)
+  @ApiOperation({ summary: 'Meu produto por ID (edição)' })
+  findMineById(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { id: string };
+    return this.productsService.findOne(id, user.id);
+  }
+
+  // ── Gerenciamento de imagens ───────────────────────────────────────
+
+  @Post(':id/images')
+  @ApiBearerAuth()
+  @Roles(UserRole.SUPPLIER_STORE, UserRole.SUPPLIER_FACTORY)
+  @ApiOperation({ summary: 'Upload de imagem do produto' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  uploadImage(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number; originalname: string },
+  ) {
+    if (!file) throw new BadRequestException('Arquivo obrigatório');
+    const user = req.user as { id: string };
+    const baseUrl = this.config.get<string>('API_BASE_URL', 'http://localhost:3001');
+    return this.productsService.addImage(id, user.id, file, baseUrl);
+  }
+
+  @Delete(':id/images/:imageId')
+  @ApiBearerAuth()
+  @Roles(UserRole.SUPPLIER_STORE, UserRole.SUPPLIER_FACTORY)
+  @ApiOperation({ summary: 'Remover imagem do produto' })
+  removeImage(@Req() req: Request, @Param('id') id: string, @Param('imageId') imageId: string) {
+    const user = req.user as { id: string };
+    return this.productsService.deleteImage(imageId, user.id);
+  }
+
+  @Patch(':id/images/:imageId/primary')
+  @ApiBearerAuth()
+  @Roles(UserRole.SUPPLIER_STORE, UserRole.SUPPLIER_FACTORY)
+  @ApiOperation({ summary: 'Definir imagem principal do produto' })
+  setPrimaryImage(@Req() req: Request, @Param('id') id: string, @Param('imageId') imageId: string) {
+    const user = req.user as { id: string };
+    return this.productsService.setPrimaryImage(imageId, id, user.id);
+  }
+
+  // ── Rota pública por slug — DEVE vir DEPOIS de /mine e mine/:id ───
 
   @Public()
   @Get(':slug')

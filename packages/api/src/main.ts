@@ -65,6 +65,14 @@ async function bootstrap() {
   if (config.get('NODE_ENV') !== 'production') {
     console.log(`📚 Swagger: http://localhost:${port}/api/docs`);
   }
+
+  const shutdown = async (signal: string) => {
+    console.log(`\nSignal ${signal} recebido — encerrando graciosamente...`);
+    await app.close();
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT',  () => void shutdown('SIGINT'));
 }
 
 bootstrap();

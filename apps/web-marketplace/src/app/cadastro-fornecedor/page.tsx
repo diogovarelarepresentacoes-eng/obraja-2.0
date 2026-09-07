@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { maskCnpj, maskPhone, maskCep, fetchCepData, CEP_ERROR_MESSAGES } from '@obraja/shared';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -33,16 +34,6 @@ const DOC_CONFIG = [
 
 type DocType = typeof DOC_CONFIG[number]['type'];
 
-function maskCnpj(v: string) {
-  return v.replace(/\D/g, '').replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5').slice(0, 18);
-}
-function maskPhone(v: string) {
-  return v.replace(/\D/g, '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3').slice(0, 15);
-}
-function maskCep(v: string) {
-  return v.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2').slice(0, 9);
-}
-
 const inputCls =
   'w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400 bg-gray-50 border border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400 transition';
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1.5';
@@ -65,22 +56,12 @@ export default function CadastroFornecedorPage() {
   }
 
   async function lookupCep(cep: string) {
-    const raw = cep.replace(/\D/g, '');
-    if (raw.length !== 8) return;
+    if (cep.replace(/\D/g, '').length !== 8) return;
     setFetchingCep(true);
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
-      if (!res.ok) return;
-      const data = await res.json() as { logradouro?: string; bairro?: string; localidade?: string; uf?: string; erro?: boolean };
-      if (data.erro) return;
-      setForm((prev) => ({
-        ...prev,
-        street: data.logradouro ?? prev.street,
-        neighborhood: data.bairro ?? prev.neighborhood,
-        city: data.localidade ?? prev.city,
-        state: data.uf ?? prev.state,
-      }));
-    } catch { /* ignore */ } finally { setFetchingCep(false); }
+    const result = await fetchCepData(cep);
+    setFetchingCep(false);
+    if (!result.ok) { setError(CEP_ERROR_MESSAGES[result.error]); return; }
+    setForm((prev) => ({ ...prev, ...result.data }));
   }
 
   function validate(s: Step): string | null {
@@ -119,9 +100,12 @@ export default function CadastroFornecedorPage() {
   async function handleConcluir() {
     setError('');
     setSubmitting(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
     try {
       const res = await fetch(`${API_BASE}/suppliers/register`, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email.trim(),
@@ -160,8 +144,13 @@ export default function CadastroFornecedorPage() {
 
       router.push('/cadastro-fornecedor/pendente');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('A requisição expirou (30s). Verifique sua conexão e tente novamente.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Erro ao concluir cadastro. Tente novamente.');
+      }
     } finally {
+      clearTimeout(timeout);
       setSubmitting(false);
     }
   }
